@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly News Digest — {{ week_label }}</title>
+<style>
+  /* Reset */
+  body, p, h1, h2, h3, h4, ul, ol, li { margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background-color: #f4f4f4;
+  }
+  /* Wrapper */
+  .wrapper {
+    max-width: 600px;
+    margin: 24px auto;
+    background: #ffffff;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  /* Header */
+  .header {
+    background-color: #1a1a2e;
+    color: #ffffff;
+    padding: 32px 28px 24px;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+  }
+  .header .subtitle {
+    font-size: 13px;
+    color: #aab4cc;
+    margin-top: 6px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  /* At a glance */
+  .at-a-glance {
+    background-color: #f8f9fb;
+    border-bottom: 2px solid #e8eaf0;
+    padding: 24px 28px;
+  }
+  .at-a-glance h2 {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #666;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 14px;
+  }
+  .at-a-glance ol {
+    padding-left: 20px;
+  }
+  .at-a-glance li {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #333;
+  }
+  .at-a-glance li .source-pills-inline {
+    margin-left: 6px;
+  }
+  /* Source pills */
+  .pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #ffffff;
+    vertical-align: middle;
+    margin-right: 2px;
+    letter-spacing: 0.3px;
+  }
+  .pill-Reuters  { background-color: #ff8c00; }
+  .pill-AP       { background-color: #c8102e; }
+  .pill-BBC      { background-color: #bb1919; }
+  .pill-Guardian { background-color: #005689; }
+  /* Story sections */
+  .story {
+    border-bottom: 1px solid #e8eaf0;
+    padding: 28px 28px 24px;
+  }
+  .story:last-of-type {
+    border-bottom: none;
+  }
+  .story-rank {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #999;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 6px;
+  }
+  .story h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.3;
+    margin-bottom: 10px;
+  }
+  .story .source-pills {
+    margin-bottom: 16px;
+  }
+  .story-body {
+    font-size: 15px;
+    color: #333;
+    line-height: 1.7;
+  }
+  .story-body p {
+    margin-bottom: 12px;
+  }
+  /* Key fact callout */
+  .key-fact {
+    background-color: #eef4fb;
+    border-left: 4px solid #1a6eb5;
+    padding: 12px 16px;
+    margin: 18px 0;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    color: #1a3a5c;
+    line-height: 1.5;
+  }
+  .key-fact strong {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #1a6eb5;
+    margin-bottom: 4px;
+  }
+  /* Read more links */
+  .read-more {
+    margin-top: 14px;
+  }
+  .read-more h4 {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #888;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 8px;
+  }
+  .read-more ul {
+    list-style: none;
+    padding: 0;
+  }
+  .read-more li {
+    margin-bottom: 5px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+  }
+  .read-more a {
+    color: #1a6eb5;
+    text-decoration: none;
+  }
+  .read-more a:hover {
+    text-decoration: underline;
+  }
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, #e8eaf0 0%, #c0c8d8 50%, #e8eaf0 100%);
+    margin: 0;
+  }
+  /* Footer */
+  .footer {
+    background-color: #f8f9fb;
+    border-top: 2px solid #e8eaf0;
+    padding: 20px 28px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    color: #888;
+    text-align: center;
+  }
+  .footer .warnings {
+    color: #cc6600;
+    margin-top: 8px;
+    text-align: left;
+  }
+  .footer .warnings ul {
+    list-style: none;
+    padding: 0;
+  }
+  .footer .warnings li {
+    margin-bottom: 3px;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Weekly News Digest</h1>
+    <div class="subtitle">{{ week_label }} &nbsp;·&nbsp; Generated {{ generated_at }}</div>
+  </div>
+
+  <!-- AT A GLANCE -->
+  <div class="at-a-glance">
+    <h2>At a Glance</h2>
+    <ol>
+      {% for story in stories %}
+      <li>
+        {{ story.theme }}
+        <span class="source-pills-inline">
+          {% for src in story.sources %}
+          <span class="pill pill-{{ src }}">{{ src }}</span>
+          {% endfor %}
+        </span>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- STORIES -->
+  {% for story in stories %}
+  <div class="story">
+    <div class="story-rank">Story #{{ story.rank }}</div>
+    <h2>{{ story.theme }}</h2>
+
+    <div class="source-pills">
+      {% for src in story.sources %}
+      <span class="pill pill-{{ src }}">{{ src }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="story-body">
+      {{ story.body_html | safe }}
+    </div>
+
+    {% if story.key_fact %}
+    <div class="key-fact">
+      <strong>Key Fact</strong>
+      {{ story.key_fact }}
+    </div>
+    {% endif %}
+
+    <!-- Read more links — deduplicated by source -->
+    {% set seen_sources = [] %}
+    <div class="read-more">
+      <h4>Read More</h4>
+      <ul>
+        {% for article in story.articles %}
+        {% if article.source not in seen_sources %}
+        {% if seen_sources.append(article.source) %}{% endif %}
+        <li>
+          <span class="pill pill-{{ article.source }}">{{ article.source }}</span>
+          <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title | truncate(80) }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% if not loop.last %}<div class="divider"></div>{% endif %}
+  {% endfor %}
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>NewsAgent &nbsp;·&nbsp; {{ total_articles }} articles analysed &nbsp;·&nbsp; {{ generated_at }}</p>
+    {% if warnings %}
+    <div class="warnings">
+      <ul>
+        {% for w in warnings %}
+        <li>&#9888; {{ w }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>
