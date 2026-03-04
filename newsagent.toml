@@ -44,4 +44,4 @@ summary_paragraphs = 1   # 1 = brief digest, 2-3 = medium, 4 = detailed
 # Guaranteed slots: always include the top story from each of these sources,
 # even if it wouldn't otherwise rank in the top 10.
 # Remaining slots are filled with the highest-scoring stories globally.
-guaranteed_sources = ["Spiegel", "Ekathimerini", "TheLocalSweden"]
+guaranteed_sources = ["DeutscheWelle", "BerlinerZeitung", "SvD", "GreeceReuters"]

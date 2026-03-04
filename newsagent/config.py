@@ -66,23 +66,34 @@ RSS_FEEDS = [
         "timeout_secs": 15,
     },
     {
-        "source": "Spiegel",
-        "url": "https://www.spiegel.de/international/index.rss",
-        "fallback_url": "https://www.spiegel.de/schlagzeilen/index.rss",
+        # Deutsche Welle — English-language German/European news
+        "source": "DeutscheWelle",
+        "url": "https://rss.dw.com/rdf/rss-en-top",
+        "fallback_url": "https://rss.dw.com/xml/rss-en-world",
         "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
-        "source": "Ekathimerini",
-        "url": "https://www.ekathimerini.com/rss/",
-        "fallback_url": "https://www.ekathimerini.com/rss",
+        # Berliner Zeitung — Berlin local news (German language; Claude reads it fine)
+        "source": "BerlinerZeitung",
+        "url": "https://www.berliner-zeitung.de/feed.rss",
+        "fallback_url": "https://news.google.com/rss/search?q=Berlin+site:berliner-zeitung.de&hl=de&gl=DE&ceid=DE:de",
         "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
-        "source": "TheLocalSweden",
-        "url": "https://www.thelocal.se/feeds/rss.xml",
-        "fallback_url": "https://www.thelocal.se/feeds/rss",
+        # SvD (Svenska Dagbladet) — Swedish news (Swedish language; Claude reads it fine)
+        "source": "SvD",
+        "url": "https://www.svd.se/feed/articles.rss",
+        "fallback_url": "https://www.svd.se/rss.xml",
+        "prominence_weight": 1.0,
+        "timeout_secs": 15,
+    },
+    {
+        # Greece news via Reuters on Google News
+        "source": "GreeceReuters",
+        "url": "https://news.google.com/rss/search?q=Greece+site:reuters.com&hl=en-US&gl=US&ceid=US:en",
+        "fallback_url": "https://news.google.com/rss/search?q=Greece+news&hl=en-US&gl=US&ceid=US:en",
         "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
