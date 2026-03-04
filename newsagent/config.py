@@ -5,16 +5,18 @@
 # ---------------------------------------------------------------------------
 RSS_FEEDS = [
     {
+        # Reuters dropped official RSS in 2020; use Google News RSS filtered to reuters.com
         "source": "Reuters",
-        "url": "https://feeds.reuters.com/reuters/topNews",
-        "fallback_url": "https://feeds.reuters.com/Reuters/worldNews",
+        "url": "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en",
+        "fallback_url": "https://news.google.com/rss/search?q=reuters+world+news&hl=en-US&gl=US&ceid=US:en",
         "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
+        # AP dropped official RSS; use Google News RSS filtered to apnews.com
         "source": "AP",
-        "url": "https://feeds.apnews.com/rss/apf-topnews",
-        "fallback_url": "https://apnews.com/rss",
+        "url": "https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en",
+        "fallback_url": "https://apnews.com/hub/ap-top-news.rss",
         "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
