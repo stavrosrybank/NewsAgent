@@ -1,0 +1,37 @@
+# NewsAgent User Configuration
+# Edit this file freely — no Python code changes needed.
+# Changes take effect on the next run.
+
+# ---------------------------------------------------------------------------
+# Editorial Focus
+# This text is sent directly to Claude when it scores stories for importance.
+# Write in plain English. Be as specific or general as you like.
+# ---------------------------------------------------------------------------
+[editorial]
+focus = """
+Reader profile: based in Berlin, with family in Sweden and Greece.
+
+Geographic priorities:
+- Global stories with major international impact always come first.
+- Give strong weight to European news — especially stories directly relevant
+  to Germany, Greece, or Sweden.
+- UK, French, and broader EU political/economic news is of interest.
+- Scandinavian stories (Sweden, Norway, Denmark) are welcome.
+
+What to deprioritize:
+- US domestic political news (party politics, congressional procedure, culture
+  war debates) unless it has clear, significant consequences for Europe or the
+  wider world (e.g. trade tariffs affecting EU, US military posture changes,
+  major economic policy shifts with global spillover).
+- Celebrity or entertainment news.
+
+Aim for a balanced digest: roughly half global/geopolitical, half
+European/regional, across the 10 stories.
+"""
+
+# ---------------------------------------------------------------------------
+# Digest settings
+# ---------------------------------------------------------------------------
+[digest]
+top_n_stories   = 10
+lookback_days   = 7

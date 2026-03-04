@@ -1,4 +1,28 @@
-"""Central configuration: RSS feeds, constants, weights, and prompt templates."""
+"""Central configuration: RSS feeds, constants, weights, and prompt templates.
+
+User-editable settings (editorial focus, digest size, lookback window) live in
+`newsagent.toml` at the repo root — no Python changes needed for those.
+"""
+
+import tomllib
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Load user config from newsagent.toml (optional — falls back to defaults)
+# ---------------------------------------------------------------------------
+_CONFIG_PATH = Path(__file__).parent.parent / "newsagent.toml"
+
+def _load_user_config() -> dict:
+    if _CONFIG_PATH.exists():
+        with open(_CONFIG_PATH, "rb") as f:
+            return tomllib.load(f)
+    return {}
+
+_user_config = _load_user_config()
+
+EDITORIAL_FOCUS: str = _user_config.get("editorial", {}).get("focus", "").strip()
+TOP_N_STORIES: int   = _user_config.get("digest", {}).get("top_n_stories", 10)
+LOOKBACK_DAYS: int   = _user_config.get("digest", {}).get("lookback_days", 7)
 
 # ---------------------------------------------------------------------------
 # RSS feeds
@@ -34,14 +58,36 @@ RSS_FEEDS = [
         "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
+    {
+        "source": "Spiegel",
+        "url": "https://www.spiegel.de/international/index.rss",
+        "fallback_url": "https://www.spiegel.de/schlagzeilen/index.rss",
+        "prominence_weight": 1.0,
+        "timeout_secs": 15,
+    },
+    {
+        "source": "Ekathimerini",
+        "url": "https://www.ekathimerini.com/rss/",
+        "fallback_url": "https://www.ekathimerini.com/rss",
+        "prominence_weight": 1.0,
+        "timeout_secs": 15,
+    },
+    {
+        "source": "TheLocalSweden",
+        "url": "https://www.thelocal.se/feeds/rss.xml",
+        "fallback_url": "https://www.thelocal.se/feeds/rss",
+        "prominence_weight": 1.0,
+        "timeout_secs": 15,
+    },
 ]
+
+# Derived — used in scorer.py to normalise source coverage (0–1)
+NUM_SOURCES: int = len(RSS_FEEDS)
 
 # ---------------------------------------------------------------------------
 # Fetch / filter settings
 # ---------------------------------------------------------------------------
-LOOKBACK_DAYS = 7
-MAX_ARTICLES_PER_SOURCE = 50
-TOP_N_STORIES = 10
+MAX_ARTICLES_PER_SOURCE = 30   # 7 sources × 30 = ~210 articles max
 
 USER_AGENT = "NewsAgent/1.0 (weekly digest bot)"
 
@@ -66,14 +112,17 @@ CLAUDE_RETRY_DELAYS = [5, 10, 20]  # seconds between retries
 # ---------------------------------------------------------------------------
 # Prompt templates
 # ---------------------------------------------------------------------------
+_SOURCE_LIST = ", ".join(f["source"] for f in RSS_FEEDS)
 
-CLUSTERING_PROMPT_TEMPLATE = """\
-You are a news editor assistant. Below is a numbered list of news article titles and summaries collected from Reuters, AP, BBC, and The Guardian in the past 7 days.
+CLUSTERING_PROMPT_TEMPLATE = f"""\
+You are a news editor assistant. Below is a numbered list of news article titles \
+and summaries collected from {_SOURCE_LIST} in the past 7 days.
 
-Your task: group these articles into thematic clusters where each cluster represents a single distinct news story or ongoing event.
+Your task: group these articles into thematic clusters where each cluster \
+represents a single distinct news story or ongoing event.
 
 Articles:
-{articles_text}
+{{articles_text}}
 
 Rules:
 - Each article belongs to exactly one cluster.
@@ -82,21 +131,27 @@ Rules:
 - Give each cluster a concise theme label (max 10 words).
 
 Respond ONLY with valid JSON in exactly this format (no markdown, no explanation):
-{{
+{{{{
   "clusters": [
-    {{
+    {{{{
       "cluster_id": 1,
       "theme": "Brief theme description",
       "article_indices": [0, 3, 7]
-    }}
+    }}}}
   ]
-}}
+}}}}
 """
 
 SCORING_PROMPT_TEMPLATE = """\
-You are a senior news editor. Below are clusters of related news stories from the past week, each with a theme and the number of major news sources that covered it.
+You are a senior news editor. Below are clusters of related news stories from \
+the past week, each with a theme and the sources that covered it.
 
-Your task: score each cluster from 1–10 on global newsworthiness. Consider:
+Your task: score each cluster from 1–10 on newsworthiness.
+
+Editorial guidance:
+{editorial_focus}
+
+General scoring criteria:
 - Geopolitical significance
 - Economic impact
 - Human interest / scale
@@ -128,7 +183,8 @@ Story theme: {theme}
 Source articles:
 {articles_text}
 
-Write 3–4 paragraphs of flowing narrative prose. Be factual, balanced, and clear. Do NOT use bullet points or headers within the narrative.
+Write 3–4 paragraphs of flowing narrative prose. Be factual, balanced, and clear. \
+Do NOT use bullet points or headers within the narrative.
 
 After the narrative, on a new line write exactly:
 KEY FACT: [one concise, striking sentence that captures the most important single fact]

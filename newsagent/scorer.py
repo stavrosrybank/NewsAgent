@@ -9,6 +9,7 @@ from newsagent.config import (
     WEIGHT_CLAUDE_SCORE,
     WEIGHT_RECENCY,
     TOP_N_STORIES,
+    NUM_SOURCES,
 )
 from newsagent.fetcher import Article
 
@@ -52,7 +53,7 @@ def score_clusters(clusters: list[Cluster]) -> list[ScoredCluster]:
     """
     Apply weighted scoring formula to each cluster and return sorted list.
 
-    final = 0.50 * (source_count / 4)
+    final = 0.50 * (source_count / NUM_SOURCES)
           + 0.35 * (claude_score / 10)
           + 0.15 * max(0, 1 - age_days/7)
     """
@@ -64,7 +65,7 @@ def score_clusters(clusters: list[Cluster]) -> list[ScoredCluster]:
         recency = _recency_score(cluster.articles)
 
         final = (
-            WEIGHT_SOURCE_COUNT * (source_count / 4.0)
+            WEIGHT_SOURCE_COUNT * (source_count / NUM_SOURCES)
             + WEIGHT_CLAUDE_SCORE * (cluster.claude_score / 10.0)
             + WEIGHT_RECENCY * recency
         )

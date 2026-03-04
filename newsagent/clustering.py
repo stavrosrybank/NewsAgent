@@ -19,6 +19,7 @@ from newsagent.config import (
     CLAUDE_RETRY_DELAYS,
     CLUSTERING_PROMPT_TEMPLATE,
     SCORING_PROMPT_TEMPLATE,
+    EDITORIAL_FOCUS,
 )
 from newsagent.fetcher import Article
 from newsagent.scorer import Cluster
@@ -151,7 +152,7 @@ def cluster_articles(
         client,
         prompt=prompt,
         temperature=0.2,
-        max_tokens=4096,
+        max_tokens=8192,
     )
 
     try:
@@ -205,7 +206,10 @@ def score_clusters_with_claude(
     Returns the same list.
     """
     clusters_text = _format_clusters_for_scoring(clusters)
-    prompt = SCORING_PROMPT_TEMPLATE.format(clusters_text=clusters_text)
+    prompt = SCORING_PROMPT_TEMPLATE.format(
+        clusters_text=clusters_text,
+        editorial_focus=EDITORIAL_FOCUS or "No specific editorial preferences set.",
+    )
 
     logger.info("Sending %d clusters to Claude for scoring…", len(clusters))
     raw = call_claude_with_retry(
