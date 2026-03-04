@@ -10,7 +10,7 @@ import markdown as md_lib
 import anthropic
 
 from newsagent.clustering import call_claude_with_retry
-from newsagent.config import SUMMARIZATION_PROMPT_TEMPLATE
+from newsagent.config import SUMMARIZATION_PROMPT_TEMPLATE, SUMMARY_PARAGRAPHS
 from newsagent.fetcher import Article
 from newsagent.scorer import ScoredCluster
 
@@ -94,7 +94,7 @@ def _summarise_one(
             client,
             prompt=prompt,
             temperature=0.5,
-            max_tokens=350,
+            max_tokens=max(350, SUMMARY_PARAGRAPHS * 300),
         )
         narrative_md, key_fact = _parse_key_fact(raw)
         body_html = _markdown_to_html(narrative_md)

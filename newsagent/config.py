@@ -20,9 +20,15 @@ def _load_user_config() -> dict:
 
 _user_config = _load_user_config()
 
-EDITORIAL_FOCUS: str = _user_config.get("editorial", {}).get("focus", "").strip()
-TOP_N_STORIES: int   = _user_config.get("digest", {}).get("top_n_stories", 10)
-LOOKBACK_DAYS: int   = _user_config.get("digest", {}).get("lookback_days", 7)
+EDITORIAL_FOCUS: str    = _user_config.get("editorial", {}).get("focus", "").strip()
+TOP_N_STORIES: int      = _user_config.get("digest", {}).get("top_n_stories", 10)
+LOOKBACK_DAYS: int      = _user_config.get("digest", {}).get("lookback_days", 7)
+SUMMARY_PARAGRAPHS: int = _user_config.get("digest", {}).get("summary_paragraphs", 1)
+
+def _paragraph_instruction(n: int) -> str:
+    if n == 1:
+        return "Write exactly 1 paragraph (4–6 sentences) of clear, factual prose."
+    return f"Write exactly {n} paragraphs of clear, factual prose."
 
 # ---------------------------------------------------------------------------
 # RSS feeds
@@ -173,20 +179,20 @@ Respond ONLY with valid JSON in exactly this format (no markdown, no explanation
 }}
 """
 
-SUMMARIZATION_PROMPT_TEMPLATE = """\
+SUMMARIZATION_PROMPT_TEMPLATE = f"""\
 You are a skilled journalist writing a concise weekly digest for a busy reader.
 
 Write a summary of the following news story based on coverage from multiple major outlets.
 
-Story theme: {theme}
+Story theme: {{theme}}
 
 Source articles:
-{articles_text}
+{{articles_text}}
 
-Write exactly ONE paragraph (4–6 sentences) of clear, factual prose. \
+{_paragraph_instruction(SUMMARY_PARAGRAPHS)} \
 Cover the key who/what/why/impact. Do NOT use bullet points or headers.
 
-After the paragraph, on a new line write exactly:
+After the paragraph(s), on a new line write exactly:
 KEY FACT: [one concise, striking sentence that captures the single most important fact]
 
 Format your entire response in Markdown.

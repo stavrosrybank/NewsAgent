@@ -33,5 +33,6 @@ European/regional, across the 10 stories.
 # Digest settings
 # ---------------------------------------------------------------------------
 [digest]
-top_n_stories   = 10
-lookback_days   = 7
+top_n_stories      = 10
+lookback_days      = 7
+summary_paragraphs = 1   # 1 = brief digest, 2-3 = medium, 4 = detailed
