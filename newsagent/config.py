@@ -20,10 +20,11 @@ def _load_user_config() -> dict:
 
 _user_config = _load_user_config()
 
-EDITORIAL_FOCUS: str    = _user_config.get("editorial", {}).get("focus", "").strip()
-TOP_N_STORIES: int      = _user_config.get("digest", {}).get("top_n_stories", 10)
-LOOKBACK_DAYS: int      = _user_config.get("digest", {}).get("lookback_days", 7)
-SUMMARY_PARAGRAPHS: int = _user_config.get("digest", {}).get("summary_paragraphs", 1)
+EDITORIAL_FOCUS: str      = _user_config.get("editorial", {}).get("focus", "").strip()
+TOP_N_STORIES: int        = _user_config.get("digest", {}).get("top_n_stories", 10)
+LOOKBACK_DAYS: int        = _user_config.get("digest", {}).get("lookback_days", 7)
+SUMMARY_PARAGRAPHS: int   = _user_config.get("digest", {}).get("summary_paragraphs", 1)
+GUARANTEED_SOURCES: list  = _user_config.get("digest", {}).get("guaranteed_sources", [])
 
 def _paragraph_instruction(n: int) -> str:
     if n == 1:
