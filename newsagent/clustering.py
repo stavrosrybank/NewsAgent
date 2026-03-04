@@ -128,12 +128,8 @@ def _jaccard_cluster(articles: list[Article], threshold: float = 0.2) -> list[Cl
 # ---------------------------------------------------------------------------
 
 def _format_articles_for_prompt(articles: list[Article]) -> str:
-    lines = []
-    for idx, a in enumerate(articles):
-        lines.append(f"[{idx}] ({a.source}) {a.title}")
-        if a.summary:
-            lines.append(f"    {a.summary[:200]}")
-    return "\n".join(lines)
+    # Titles only — keeps the clustering prompt short even with 300+ articles
+    return "\n".join(f"[{idx}] ({a.source}) {a.title}" for idx, a in enumerate(articles))
 
 
 def cluster_articles(

@@ -87,7 +87,7 @@ NUM_SOURCES: int = len(RSS_FEEDS)
 # ---------------------------------------------------------------------------
 # Fetch / filter settings
 # ---------------------------------------------------------------------------
-MAX_ARTICLES_PER_SOURCE = 30   # 7 sources × 30 = ~210 articles max
+MAX_ARTICLES_PER_SOURCE = 50   # 7 sources × 50 = ~350 articles; ensures full 7-day coverage
 
 USER_AGENT = "NewsAgent/1.0 (weekly digest bot)"
 
@@ -174,7 +174,7 @@ Respond ONLY with valid JSON in exactly this format (no markdown, no explanation
 """
 
 SUMMARIZATION_PROMPT_TEMPLATE = """\
-You are a skilled journalist writing for an informed general audience.
+You are a skilled journalist writing a concise weekly digest for a busy reader.
 
 Write a summary of the following news story based on coverage from multiple major outlets.
 
@@ -183,11 +183,11 @@ Story theme: {theme}
 Source articles:
 {articles_text}
 
-Write 3–4 paragraphs of flowing narrative prose. Be factual, balanced, and clear. \
-Do NOT use bullet points or headers within the narrative.
+Write exactly ONE paragraph (4–6 sentences) of clear, factual prose. \
+Cover the key who/what/why/impact. Do NOT use bullet points or headers.
 
-After the narrative, on a new line write exactly:
-KEY FACT: [one concise, striking sentence that captures the most important single fact]
+After the paragraph, on a new line write exactly:
+KEY FACT: [one concise, striking sentence that captures the single most important fact]
 
 Format your entire response in Markdown.
 """

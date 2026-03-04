@@ -94,7 +94,7 @@ def _summarise_one(
             client,
             prompt=prompt,
             temperature=0.5,
-            max_tokens=800,
+            max_tokens=350,
         )
         narrative_md, key_fact = _parse_key_fact(raw)
         body_html = _markdown_to_html(narrative_md)
