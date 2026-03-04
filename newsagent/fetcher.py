@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
+import urllib.request
+
 import feedparser
 from dateutil import parser as dateutil_parser
 
@@ -77,11 +79,11 @@ def _fetch_feed(feed_cfg: dict) -> tuple[list[Article], list[str]]:
         if not url:
             continue
         try:
-            feed = feedparser.parse(
-                url,
-                request_headers={"User-Agent": USER_AGENT},
-                timeout=feed_cfg.get("timeout_secs", 15),
-            )
+            timeout = feed_cfg.get("timeout_secs", 15)
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                raw_content = response.read()
+            feed = feedparser.parse(raw_content)
             if feed.bozo and not feed.entries:
                 raise ValueError(f"bozo feed: {feed.bozo_exception}")
 
