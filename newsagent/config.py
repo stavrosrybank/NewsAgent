@@ -214,6 +214,14 @@ Category assignment rules:
 - "Culture": arts, society, sports, lifestyle.
 - "Wild Card": use only if no other category fits well.
 
+IMPORTANT — Source-based category signals. These sources only cover specific regions.
+If a cluster contains articles from any of these sources, you MUST prefer that region's category
+over "Global Geopolitical", even if the story also has international significance:
+- "BerlinerZeitung" → always assign "Germany/Berlin"
+- "DeutscheWelle" → strongly prefer "Germany/Berlin"
+- "SvD" → always assign "Sweden"
+- "GreeceReuters" → always assign "Greece"
+
 Editorial guidance:
 {{editorial_focus}}
 

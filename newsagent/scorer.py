@@ -16,6 +16,20 @@ from newsagent.fetcher import Article
 
 logger = logging.getLogger(__name__)
 
+# Sources that are exclusively regional — used as fallback when Claude
+# assigns a regional article to a generic category.
+_SOURCE_CATEGORY_FALLBACK: dict[str, str] = {
+    "BerlinerZeitung": "Germany/Berlin",
+    "DeutscheWelle":   "Germany/Berlin",
+    "SvD":             "Sweden",
+    "GreeceReuters":   "Greece",
+}
+
+
+def _has_regional_source(cluster: "ScoredCluster", category: str) -> bool:
+    target = {src for src, cat in _SOURCE_CATEGORY_FALLBACK.items() if cat == category}
+    return any(a.source in target for a in cluster.articles)
+
 
 @dataclass
 class Cluster:
@@ -125,6 +139,21 @@ def score_clusters(clusters: list[Cluster]) -> list[ScoredCluster]:
                 selected_ids.add(cluster.cluster_id)
                 filled += 1
                 logger.info("Category slot '%s': '%s'", cat, cluster.theme)
+
+        # Fallback: if Claude didn't assign this regional category, look for
+        # clusters that contain articles from the corresponding regional sources.
+        if filled < count:
+            for cluster in scored:
+                if filled >= count:
+                    break
+                if cluster.cluster_id not in selected_ids and _has_regional_source(cluster, cat):
+                    selected.append(cluster)
+                    selected_ids.add(cluster.cluster_id)
+                    filled += 1
+                    logger.info(
+                        "Regional-source fallback slot '%s': '%s' (Claude assigned: %s)",
+                        cat, cluster.theme, cluster.category,
+                    )
 
         if filled < count:
             logger.warning(
