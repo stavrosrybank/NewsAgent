@@ -204,15 +204,21 @@ Valid categories:
 {_CATEGORY_LIST}
 - Wild Card
 
-Category assignment rules:
-- "Germany/Berlin": stories primarily about Germany or Berlin.
-- "Sweden": stories primarily about Sweden or Swedish affairs.
-- "Greece": stories primarily about Greece or Greek affairs.
-- "Global Geopolitical": major international political/military/diplomatic events.
-- "Science/Tech/AI": science, technology, or artificial intelligence.
-- "Finance/Business/Economy": markets, economy, business, trade.
+Category assignment rules — apply these strictly:
+- "Germany/Berlin": any story primarily about Germany or Berlin, even if it has
+  international dimensions (e.g. German budget, Berlin politics, German election).
+- "Sweden": any story primarily about Sweden or Swedish affairs.
+- "Greece": any story primarily about Greece or Greek affairs.
+- "Science/Tech/AI": science, technology, or AI breakthroughs — do NOT use
+  "Global Geopolitical" for these even if geopolitically significant.
+- "Finance/Business/Economy": markets, economy, business, trade — do NOT use
+  "Global Geopolitical" for financial/economic stories unless they are primarily
+  about military or political conflict.
 - "Culture": arts, society, sports, lifestyle.
-- "Wild Card": use only if no other category fits well.
+- "Global Geopolitical": reserve ONLY for stories where the primary subject is
+  international politics, military conflict, or diplomacy. If a story could fit
+  another category, prefer that category.
+- "Wild Card": only if no other category fits.
 
 IMPORTANT — Source-based category signals. These sources only cover specific regions.
 If a cluster contains articles from any of these sources, you MUST prefer that region's category

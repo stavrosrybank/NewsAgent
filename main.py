@@ -129,6 +129,10 @@ def main() -> None:
     logger.info("Step 1/6 — Fetching RSS feeds")
     articles, warnings = fetch_all()
     logger.info("Fetched %d articles; %d warning(s)", len(articles), len(warnings))
+    from collections import Counter
+    source_counts = Counter(a.source for a in articles)
+    for source, count in sorted(source_counts.items()):
+        logger.info("  %-20s %d articles", source, count)
     if not articles:
         raise RuntimeError("No articles fetched — cannot produce digest.")
 

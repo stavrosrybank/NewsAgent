@@ -244,4 +244,23 @@ def score_clusters_with_claude(
             c.claude_score = 5.0
             c.claude_reasoning = "No score returned by Claude"
 
+    # Hard category override for exclusively regional sources — code beats prompts.
+    # DeutscheWelle is excluded because it covers international news legitimately.
+    _EXCLUSIVE_REGIONAL = {
+        "BerlinerZeitung": "Germany/Berlin",
+        "SvD":             "Sweden",
+        "GreeceReuters":   "Greece",
+    }
+    for c in clusters:
+        for article in c.articles:
+            if article.source in _EXCLUSIVE_REGIONAL:
+                old_cat = c.category
+                c.category = _EXCLUSIVE_REGIONAL[article.source]
+                if old_cat != c.category:
+                    logger.info(
+                        "Category override: cluster %d '%s': %s → %s (source: %s)",
+                        c.cluster_id, c.theme, old_cat, c.category, article.source,
+                    )
+                break  # first exclusive regional source wins
+
     return clusters

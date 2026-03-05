@@ -16,6 +16,10 @@ from newsagent.fetcher import Article
 
 logger = logging.getLogger(__name__)
 
+# Broad categories that should be filled LAST so regional/specialized slots
+# get first pick of all available clusters.
+_BROAD_CATEGORIES = {"Global Geopolitical", "Wild Card"}
+
 # Sources that are exclusively regional — used as fallback when Claude
 # assigns a regional article to a generic category.
 _SOURCE_CATEGORY_FALLBACK: dict[str, str] = {
@@ -123,8 +127,8 @@ def score_clusters(clusters: list[Cluster]) -> list[ScoredCluster]:
     selected: list[ScoredCluster] = []
     selected_ids: set[int] = set()
 
-    # Pass 1: fill all non-Wild Card category slots
-    for slot in DIGEST_SLOTS:
+    # Pass 1: fill all non-Wild Card category slots — narrow/regional first
+    for slot in sorted(DIGEST_SLOTS, key=lambda s: (1 if s["category"] in _BROAD_CATEGORIES else 0)):
         cat = slot["category"]
         count = slot.get("count", 1)
         if cat == "Wild Card":
