@@ -1,0 +1,14 @@
+# NewsAgent Feedback
+# Edit this file after reading a digest to calibrate future issues.
+# Changes are picked up automatically on the next run.
+#
+# 'themes' = specific story titles you liked or disliked
+# 'topics' = general subject areas to seek out or avoid
+
+[likes]
+themes = []    # e.g. ["EU energy policy deal", "Greek election results"]
+topics = []    # e.g. ["climate", "European diplomacy"]
+
+[dislikes]
+themes = []    # e.g. ["Texas primary election", "BrewDog founder interview"]
+topics = []    # e.g. ["US domestic politics", "celebrity news"]

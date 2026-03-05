@@ -19,8 +19,6 @@ Geographic priorities:
 - UK, French, and broader EU political/economic news is of interest.
 - Scandinavian stories (Sweden, Norway, Denmark) are welcome.
 
-==> In total it would be great to have at least include a top Global story (maybe 2-3 if there was a busy week). And also include the top story from Greece, Sweden and Berlin. The the another 5 stories should be a mix of whatever has been top priority based on the conditions above.
-
 What to deprioritize:
 - US domestic political news (party politics, congressional procedure, culture
   war debates) unless it has clear, significant consequences for Europe or the
@@ -28,20 +26,51 @@ What to deprioritize:
   major economic policy shifts with global spillover).
 - Celebrity or entertainment news.
 - Too specific news from countries that are not Germany, Sweden, Greece, or Berlin related.
-
-Aim for a balanced digest: roughly half global/geopolitical, half
-European/regional, across the 10 stories.
 """
 
 # ---------------------------------------------------------------------------
 # Digest settings
 # ---------------------------------------------------------------------------
 [digest]
-top_n_stories      = 10
-lookback_days      = 7
-summary_paragraphs = 1   # 1 = brief digest, 2-3 = medium, 4 = detailed
+top_n_stories = 10
+lookback_days = 7
+summary_words = 80   # target word count per story summary (Key Fact is added on top)
 
-# Guaranteed slots: always include the top story from each of these sources,
-# even if it wouldn't otherwise rank in the top 10.
-# Remaining slots are filled with the highest-scoring stories globally.
-guaranteed_sources = ["DeutscheWelle", "BerlinerZeitung", "SvD", "GreeceReuters"]
+# ---------------------------------------------------------------------------
+# Story slots — defines the structure of each digest.
+# The 'count' field sets how many stories of that category to include.
+# Slot categories are assigned by Claude during scoring.
+# 'Wild Card' always fills last — picks whatever scores highest overall.
+# Total count across all slots should equal top_n_stories.
+# ---------------------------------------------------------------------------
+[[digest.slots]]
+category = "Global Geopolitical"
+count = 2
+
+[[digest.slots]]
+category = "Germany/Berlin"
+count = 2
+
+[[digest.slots]]
+category = "Sweden"
+count = 1
+
+[[digest.slots]]
+category = "Greece"
+count = 1
+
+[[digest.slots]]
+category = "Science/Tech/AI"
+count = 1
+
+[[digest.slots]]
+category = "Finance/Business/Economy"
+count = 1
+
+[[digest.slots]]
+category = "Culture"
+count = 1
+
+[[digest.slots]]
+category = "Wild Card"
+count = 1

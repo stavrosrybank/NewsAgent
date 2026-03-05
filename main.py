@@ -4,11 +4,13 @@ NewsAgent — Weekly News Digest Orchestrator
 Fetch → Cluster → Score → Summarise → Render → Send
 """
 
+import json
 import logging
 import os
 import sys
 import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 
 import anthropic
 
@@ -33,6 +35,49 @@ logging.basicConfig(
 )
 logger = logging.getLogger("newsagent.main")
 
+_MEMORY_PATH = Path(__file__).parent / "memory" / "history.json"
+_MEMORY_LOOKBACK = 3  # How many past digests to draw previous themes from
+
+
+# ---------------------------------------------------------------------------
+# Memory helpers
+# ---------------------------------------------------------------------------
+
+def _load_memory() -> dict:
+    if _MEMORY_PATH.exists():
+        try:
+            with open(_MEMORY_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as exc:
+            logger.warning("Could not load memory file: %s", exc)
+    return {"digests": []}
+
+
+def _save_memory(memory: dict, themes: list[str]) -> None:
+    entry = {
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "themes": themes,
+    }
+    memory["digests"].append(entry)
+    # Keep only last 10 digests to avoid unbounded growth
+    memory["digests"] = memory["digests"][-10:]
+    try:
+        _MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(_MEMORY_PATH, "w", encoding="utf-8") as f:
+            json.dump(memory, f, indent=2, ensure_ascii=False)
+        logger.info("Memory saved (%d digest entries)", len(memory["digests"]))
+    except Exception as exc:
+        logger.warning("Could not save memory file: %s", exc)
+
+
+def _previous_themes(memory: dict) -> list[str]:
+    """Return themes from the last MEMORY_LOOKBACK digests, oldest first."""
+    recent = memory.get("digests", [])[-_MEMORY_LOOKBACK:]
+    themes = []
+    for entry in recent:
+        themes.extend(entry.get("themes", []))
+    return themes
+
 
 # ---------------------------------------------------------------------------
 # Environment helpers
@@ -47,7 +92,6 @@ def _require_env(name: str) -> str:
 
 def _week_label() -> str:
     now = datetime.now(timezone.utc)
-    # Find the most recent Monday
     days_since_monday = now.weekday()
     monday = now.replace(hour=0, minute=0, second=0, microsecond=0)
     from datetime import timedelta
@@ -75,6 +119,12 @@ def main() -> None:
 
     client = anthropic.Anthropic(api_key=anthropic_api_key)
 
+    # Load memory (previous digest themes)
+    memory = _load_memory()
+    prev_themes = _previous_themes(memory)
+    if prev_themes:
+        logger.info("Loaded %d previous themes from memory", len(prev_themes))
+
     # 1. Fetch
     logger.info("Step 1/6 — Fetching RSS feeds")
     articles, warnings = fetch_all()
@@ -89,7 +139,7 @@ def main() -> None:
 
     # 3. Score (Claude editorial + weighted formula)
     logger.info("Step 3/6 — Scoring clusters")
-    raw_clusters = score_clusters_with_claude(raw_clusters, client)
+    raw_clusters = score_clusters_with_claude(raw_clusters, client, previous_themes=prev_themes)
     top_scored = score_clusters(raw_clusters)
     logger.info("Selected top %d stories", len(top_scored))
 
@@ -124,7 +174,6 @@ def main() -> None:
             subject=subject,
         )
     except Exception as exc:
-        # Save HTML locally before re-raising
         fallback_filename = f"digest_{datetime.now(timezone.utc).strftime('%Y%m%d')}.html"
         try:
             with open(fallback_filename, "w", encoding="utf-8") as f:
@@ -133,6 +182,10 @@ def main() -> None:
         except Exception as write_exc:
             logger.error("Could not save fallback HTML: %s", write_exc)
         raise RuntimeError(f"Email delivery failed: {exc}") from exc
+
+    # Save memory after successful send
+    current_themes = [s.theme for s in stories]
+    _save_memory(memory, current_themes)
 
     logger.info("NewsAgent completed successfully.")
 

@@ -167,6 +167,21 @@
   .read-more a:hover {
     text-decoration: underline;
   }
+  /* Category badge */
+  .category-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: Arial, Helvetica, sans-serif;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    background-color: #e8eaf0;
+    color: #555;
+    vertical-align: middle;
+    margin-bottom: 10px;
+  }
   /* Divider */
   .divider {
     height: 1px;
@@ -229,6 +244,7 @@
   {% for story in stories %}
   <div class="story">
     <div class="story-rank">Story #{{ story.rank }}</div>
+    <span class="category-badge">{{ story.category }}</span>
     <h2>{{ story.theme }}</h2>
 
     <div class="source-pills">

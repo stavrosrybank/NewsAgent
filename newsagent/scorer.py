@@ -10,7 +10,7 @@ from newsagent.config import (
     WEIGHT_RECENCY,
     TOP_N_STORIES,
     NUM_SOURCES,
-    GUARANTEED_SOURCES,
+    DIGEST_SLOTS,
 )
 from newsagent.fetcher import Article
 
@@ -25,6 +25,7 @@ class Cluster:
     articles: list[Article]
     claude_score: float = 0.0
     claude_reasoning: str = ""
+    category: str = "Wild Card"
 
 
 @dataclass
@@ -37,6 +38,7 @@ class ScoredCluster:
     claude_reasoning: str
     recency_score: float
     final_score: float
+    category: str = "Wild Card"
     sources: list[str] = field(default_factory=list)
 
 
@@ -57,6 +59,8 @@ def score_clusters(clusters: list[Cluster]) -> list[ScoredCluster]:
     final = 0.50 * (source_count / NUM_SOURCES)
           + 0.35 * (claude_score / 10)
           + 0.15 * max(0, 1 - age_days/7)
+
+    If DIGEST_SLOTS are configured, fills category slots first, then Wild Card.
     """
     scored: list[ScoredCluster] = []
 
@@ -81,41 +85,66 @@ def score_clusters(clusters: list[Cluster]) -> list[ScoredCluster]:
                 claude_reasoning=cluster.claude_reasoning,
                 recency_score=recency,
                 final_score=final,
+                category=cluster.category,
                 sources=sources,
             )
         )
         logger.debug(
-            "Cluster %d '%s': sources=%d claude=%.1f recency=%.2f final=%.3f",
+            "Cluster %d '%s': sources=%d claude=%.1f recency=%.2f final=%.3f cat=%s",
             cluster.cluster_id,
             cluster.theme,
             source_count,
             cluster.claude_score,
             recency,
             final,
+            cluster.category,
         )
 
     scored.sort(key=lambda c: c.final_score, reverse=True)
 
-    if not GUARANTEED_SOURCES:
+    if not DIGEST_SLOTS:
         return scored[:TOP_N_STORIES]
 
-    # --- Guaranteed slots ---
-    # Reserve one slot per guaranteed source (its highest-scoring cluster).
-    # Fill remaining slots from the global top list.
+    # --- Category-based slot filling ---
     selected: list[ScoredCluster] = []
     selected_ids: set[int] = set()
 
-    for source in GUARANTEED_SOURCES:
+    # Pass 1: fill all non-Wild Card category slots
+    for slot in DIGEST_SLOTS:
+        cat = slot["category"]
+        count = slot.get("count", 1)
+        if cat == "Wild Card":
+            continue
+
+        filled = 0
         for cluster in scored:
-            if cluster.cluster_id not in selected_ids and source in cluster.sources:
+            if filled >= count:
+                break
+            if cluster.cluster_id not in selected_ids and cluster.category == cat:
                 selected.append(cluster)
                 selected_ids.add(cluster.cluster_id)
-                logger.info("Guaranteed slot: %s → '%s'", source, cluster.theme)
-                break
-        else:
-            logger.warning("Guaranteed slot for '%s' skipped — no cluster found (feed may have failed)", source)
+                filled += 1
+                logger.info("Category slot '%s': '%s'", cat, cluster.theme)
 
-    # Fill remaining slots with top globally-scored clusters not already selected
+        if filled < count:
+            logger.warning(
+                "Category '%s': only found %d/%d stories (not enough articles in that category)",
+                cat, filled, count,
+            )
+
+    # Pass 2: Wild Card — fill from global top list (any category not already selected)
+    wild_card_count = sum(s.get("count", 1) for s in DIGEST_SLOTS if s["category"] == "Wild Card")
+    wild_filled = 0
+    for cluster in scored:
+        if wild_filled >= wild_card_count:
+            break
+        if cluster.cluster_id not in selected_ids:
+            selected.append(cluster)
+            selected_ids.add(cluster.cluster_id)
+            wild_filled += 1
+            logger.info("Wild Card slot: '%s' (category: %s)", cluster.theme, cluster.category)
+
+    # Pass 3: if total < TOP_N_STORIES, pad from global top list
     for cluster in scored:
         if len(selected) >= TOP_N_STORIES:
             break
@@ -123,6 +152,5 @@ def score_clusters(clusters: list[Cluster]) -> list[ScoredCluster]:
             selected.append(cluster)
             selected_ids.add(cluster.cluster_id)
 
-    # Re-sort by score for display order
     selected.sort(key=lambda c: c.final_score, reverse=True)
     return selected

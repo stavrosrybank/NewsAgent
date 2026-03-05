@@ -20,6 +20,8 @@ from newsagent.config import (
     CLUSTERING_PROMPT_TEMPLATE,
     SCORING_PROMPT_TEMPLATE,
     EDITORIAL_FOCUS,
+    FEEDBACK_TEXT,
+    NUM_SOURCES,
 )
 from newsagent.fetcher import Article
 from newsagent.scorer import Cluster
@@ -100,7 +102,6 @@ def _jaccard_cluster(articles: list[Article], threshold: float = 0.2) -> list[Cl
         best_cluster = -1
         best_score = threshold
         for ci, c_indices in enumerate(clusters):
-            # Compare against each article already in the cluster
             score = max(_jaccard(token_sets[i], token_sets[j]) for j in c_indices)
             if score > best_score:
                 best_score = score
@@ -115,7 +116,6 @@ def _jaccard_cluster(articles: list[Article], threshold: float = 0.2) -> list[Cl
     result: list[Cluster] = []
     for ci, indices in enumerate(clusters):
         cluster_articles = [articles[i] for i in indices]
-        # Use the title of the most prominent article as theme
         theme = cluster_articles[0].title[:80]
         result.append(Cluster(cluster_id=ci + 1, theme=theme, articles=cluster_articles))
 
@@ -187,7 +187,7 @@ def _format_clusters_for_scoring(clusters: list[Cluster]) -> str:
     for c in clusters:
         sources = list({a.source for a in c.articles})
         lines.append(
-            f"Cluster {c.cluster_id}: {c.theme} | Sources: {', '.join(sources)} ({len(sources)}/4)"
+            f"Cluster {c.cluster_id}: {c.theme} | Sources: {', '.join(sources)} ({len(sources)}/{NUM_SOURCES})"
         )
     return "\n".join(lines)
 
@@ -195,16 +195,25 @@ def _format_clusters_for_scoring(clusters: list[Cluster]) -> str:
 def score_clusters_with_claude(
     clusters: list[Cluster],
     client: anthropic.Anthropic,
+    previous_themes: Optional[list[str]] = None,
 ) -> list[Cluster]:
     """
-    Call Claude to assign editorial newsworthiness scores to each cluster.
-    Mutates cluster.claude_score and cluster.claude_reasoning in place.
+    Call Claude to assign editorial newsworthiness scores and categories to each cluster.
+    Mutates cluster.claude_score, cluster.claude_reasoning, and cluster.category in place.
     Returns the same list.
     """
     clusters_text = _format_clusters_for_scoring(clusters)
+
+    if previous_themes:
+        memory_text = "\n".join(f"- {t}" for t in previous_themes)
+    else:
+        memory_text = "No previous digest history available."
+
     prompt = SCORING_PROMPT_TEMPLATE.format(
         clusters_text=clusters_text,
         editorial_focus=EDITORIAL_FOCUS or "No specific editorial preferences set.",
+        feedback_text=FEEDBACK_TEXT,
+        memory_text=memory_text,
     )
 
     logger.info("Sending %d clusters to Claude for scoring…", len(clusters))
@@ -212,7 +221,7 @@ def score_clusters_with_claude(
         client,
         prompt=prompt,
         temperature=0.2,
-        max_tokens=2048,
+        max_tokens=4096,
     )
 
     try:
@@ -220,7 +229,6 @@ def score_clusters_with_claude(
         scores_map = {s["cluster_id"]: s for s in data["scores"]}
     except (json.JSONDecodeError, KeyError) as exc:
         logger.warning("Claude scoring JSON parse failed: %s\nRaw:\n%s", exc, raw[:500])
-        # Default all scores to 5.0
         for c in clusters:
             c.claude_score = 5.0
             c.claude_reasoning = "Score unavailable (parse error)"
@@ -231,6 +239,7 @@ def score_clusters_with_claude(
         if entry:
             c.claude_score = float(entry.get("score", 5.0))
             c.claude_reasoning = entry.get("reasoning", "")
+            c.category = entry.get("category", "Wild Card")
         else:
             c.claude_score = 5.0
             c.claude_reasoning = "No score returned by Claude"

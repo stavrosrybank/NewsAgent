@@ -7,6 +7,9 @@ on:
   workflow_dispatch:
     # Allow manual trigger for testing
 
+permissions:
+  contents: write
+
 jobs:
   run-digest:
     runs-on: ubuntu-latest
@@ -35,6 +38,14 @@ jobs:
           EMAIL_FROM:        ${{ secrets.EMAIL_FROM }}
           EMAIL_TO:          ${{ secrets.EMAIL_TO }}
         run: python main.py
+
+      - name: Commit memory update
+        if: success()
+        run: |
+          git config user.name "NewsAgent Bot"
+          git config user.email "newsagent@github.com"
+          git add memory/history.json
+          git diff --staged --quiet || (git commit -m "Update digest memory [skip ci]" && git push)
 
       - name: Upload log on failure
         if: failure()

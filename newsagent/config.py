@@ -1,14 +1,14 @@
 """Central configuration: RSS feeds, constants, weights, and prompt templates.
 
-User-editable settings (editorial focus, digest size, lookback window) live in
-`newsagent.toml` at the repo root — no Python changes needed for those.
+User-editable settings live in `newsagent.toml` (editorial focus, digest slots,
+word count, etc.) and `feedback.toml` (story ratings). No Python changes needed.
 """
 
 import tomllib
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Load user config from newsagent.toml (optional — falls back to defaults)
+# Load newsagent.toml
 # ---------------------------------------------------------------------------
 _CONFIG_PATH = Path(__file__).parent.parent / "newsagent.toml"
 
@@ -20,16 +20,51 @@ def _load_user_config() -> dict:
 
 _user_config = _load_user_config()
 
-EDITORIAL_FOCUS: str      = _user_config.get("editorial", {}).get("focus", "").strip()
-TOP_N_STORIES: int        = _user_config.get("digest", {}).get("top_n_stories", 10)
-LOOKBACK_DAYS: int        = _user_config.get("digest", {}).get("lookback_days", 7)
-SUMMARY_PARAGRAPHS: int   = _user_config.get("digest", {}).get("summary_paragraphs", 1)
-GUARANTEED_SOURCES: list  = _user_config.get("digest", {}).get("guaranteed_sources", [])
+EDITORIAL_FOCUS: str  = _user_config.get("editorial", {}).get("focus", "").strip()
+TOP_N_STORIES: int    = _user_config.get("digest", {}).get("top_n_stories", 10)
+LOOKBACK_DAYS: int    = _user_config.get("digest", {}).get("lookback_days", 7)
+SUMMARY_WORDS: int    = _user_config.get("digest", {}).get("summary_words", 80)
+DIGEST_SLOTS: list    = _user_config.get("digest", {}).get("slots", [])
 
-def _paragraph_instruction(n: int) -> str:
-    if n == 1:
-        return "Write exactly 1 paragraph (4–6 sentences) of clear, factual prose."
-    return f"Write exactly {n} paragraphs of clear, factual prose."
+# Flat category list for the scoring prompt (excludes Wild Card — handled separately)
+_CATEGORY_LIST = "\n".join(
+    f"- {s['category']}" for s in DIGEST_SLOTS if s["category"] != "Wild Card"
+) or "- Global Geopolitical\n- Wild Card"
+
+# ---------------------------------------------------------------------------
+# Load feedback.toml
+# ---------------------------------------------------------------------------
+_FEEDBACK_PATH = Path(__file__).parent.parent / "feedback.toml"
+
+def _load_feedback() -> dict:
+    if _FEEDBACK_PATH.exists():
+        with open(_FEEDBACK_PATH, "rb") as f:
+            return tomllib.load(f)
+    return {}
+
+_feedback = _load_feedback()
+
+def _build_feedback_text() -> str:
+    likes    = _feedback.get("likes", {})
+    dislikes = _feedback.get("dislikes", {})
+    liked_topics    = likes.get("topics", [])
+    liked_themes    = likes.get("themes", [])
+    disliked_topics = dislikes.get("topics", [])
+    disliked_themes = dislikes.get("themes", [])
+    if not any([liked_topics, liked_themes, disliked_topics, disliked_themes]):
+        return "No reader feedback provided yet."
+    parts = []
+    if liked_topics or liked_themes:
+        parts.append("Reader enjoyed (seek similar):")
+        if liked_topics:  parts.append(f"  Topics: {', '.join(liked_topics)}")
+        if liked_themes:  parts.append(f"  Stories: {', '.join(liked_themes)}")
+    if disliked_topics or disliked_themes:
+        parts.append("Reader did NOT enjoy (deprioritise similar):")
+        if disliked_topics: parts.append(f"  Topics: {', '.join(disliked_topics)}")
+        if disliked_themes: parts.append(f"  Stories: {', '.join(disliked_themes)}")
+    return "\n".join(parts)
+
+FEEDBACK_TEXT: str = _build_feedback_text()
 
 # ---------------------------------------------------------------------------
 # RSS feeds
@@ -99,14 +134,12 @@ RSS_FEEDS = [
     },
 ]
 
-# Derived — used in scorer.py to normalise source coverage (0–1)
 NUM_SOURCES: int = len(RSS_FEEDS)
 
 # ---------------------------------------------------------------------------
 # Fetch / filter settings
 # ---------------------------------------------------------------------------
-MAX_ARTICLES_PER_SOURCE = 50   # 7 sources × 50 = ~350 articles; ensures full 7-day coverage
-
+MAX_ARTICLES_PER_SOURCE = 50
 USER_AGENT = "NewsAgent/1.0 (weekly digest bot)"
 
 # ---------------------------------------------------------------------------
@@ -117,15 +150,15 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 # ---------------------------------------------------------------------------
 # Score weights  (must sum to 1.0)
 # ---------------------------------------------------------------------------
-WEIGHT_SOURCE_COUNT = 0.50   # coverage breadth across sources
-WEIGHT_CLAUDE_SCORE = 0.35   # editorial importance from Claude
-WEIGHT_RECENCY      = 0.15   # recency within the look-back window
+WEIGHT_SOURCE_COUNT = 0.50
+WEIGHT_CLAUDE_SCORE = 0.35
+WEIGHT_RECENCY      = 0.15
 
 # ---------------------------------------------------------------------------
 # Retry settings for Claude calls
 # ---------------------------------------------------------------------------
 CLAUDE_MAX_RETRIES = 3
-CLAUDE_RETRY_DELAYS = [5, 10, 20]  # seconds between retries
+CLAUDE_RETRY_DELAYS = [5, 10, 20]
 
 # ---------------------------------------------------------------------------
 # Prompt templates
@@ -134,7 +167,7 @@ _SOURCE_LIST = ", ".join(f["source"] for f in RSS_FEEDS)
 
 CLUSTERING_PROMPT_TEMPLATE = f"""\
 You are a news editor assistant. Below is a numbered list of news article titles \
-and summaries collected from {_SOURCE_LIST} in the past 7 days.
+collected from {_SOURCE_LIST} in the past 7 days.
 
 Your task: group these articles into thematic clusters where each cluster \
 represents a single distinct news story or ongoing event.
@@ -160,14 +193,35 @@ Respond ONLY with valid JSON in exactly this format (no markdown, no explanation
 }}}}
 """
 
-SCORING_PROMPT_TEMPLATE = """\
-You are a senior news editor. Below are clusters of related news stories from \
-the past week, each with a theme and the sources that covered it.
+SCORING_PROMPT_TEMPLATE = f"""\
+You are a senior news editor. Below are clusters of news stories from the past week.
 
-Your task: score each cluster from 1–10 on newsworthiness.
+Your tasks:
+1. Score each cluster from 1–10 on newsworthiness.
+2. Assign each cluster to exactly one category from the list below.
+
+Valid categories:
+{_CATEGORY_LIST}
+- Wild Card
+
+Category assignment rules:
+- "Germany/Berlin": stories primarily about Germany or Berlin.
+- "Sweden": stories primarily about Sweden or Swedish affairs.
+- "Greece": stories primarily about Greece or Greek affairs.
+- "Global Geopolitical": major international political/military/diplomatic events.
+- "Science/Tech/AI": science, technology, or artificial intelligence.
+- "Finance/Business/Economy": markets, economy, business, trade.
+- "Culture": arts, society, sports, lifestyle.
+- "Wild Card": use only if no other category fits well.
 
 Editorial guidance:
-{editorial_focus}
+{{editorial_focus}}
+
+Reader feedback from previous digests:
+{{feedback_text}}
+
+Topics already covered in recent digests (deprioritise unless major new developments):
+{{memory_text}}
 
 General scoring criteria:
 - Geopolitical significance
@@ -177,18 +231,19 @@ General scoring criteria:
 - Likelihood of long-term consequence
 
 Clusters:
-{clusters_text}
+{{clusters_text}}
 
 Respond ONLY with valid JSON in exactly this format (no markdown, no explanation):
-{{
+{{{{
   "scores": [
-    {{
+    {{{{
       "cluster_id": 1,
       "score": 8.5,
-      "reasoning": "One sentence explanation."
-    }}
+      "reasoning": "One sentence explanation.",
+      "category": "Global Geopolitical"
+    }}}}
   ]
-}}
+}}}}
 """
 
 SUMMARIZATION_PROMPT_TEMPLATE = f"""\
@@ -201,10 +256,11 @@ Story theme: {{theme}}
 Source articles:
 {{articles_text}}
 
-{_paragraph_instruction(SUMMARY_PARAGRAPHS)} \
-Cover the key who/what/why/impact. Do NOT use bullet points or headers.
+Write approximately {SUMMARY_WORDS} words of clear, factual prose. \
+Cover the key who/what/why/impact in a single tight paragraph. \
+Do NOT use bullet points or headers.
 
-After the paragraph(s), on a new line write exactly:
+After the paragraph, on a new line write exactly:
 KEY FACT: [one concise, striking sentence that captures the single most important fact]
 
 Format your entire response in Markdown.

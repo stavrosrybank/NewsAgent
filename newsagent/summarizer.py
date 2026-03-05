@@ -10,7 +10,7 @@ import markdown as md_lib
 import anthropic
 
 from newsagent.clustering import call_claude_with_retry
-from newsagent.config import SUMMARIZATION_PROMPT_TEMPLATE, SUMMARY_PARAGRAPHS
+from newsagent.config import SUMMARIZATION_PROMPT_TEMPLATE, SUMMARY_WORDS
 from newsagent.fetcher import Article
 from newsagent.scorer import ScoredCluster
 
@@ -29,6 +29,7 @@ class DigestStory:
     body_html: str              # narrative paragraphs as HTML
     key_fact: str               # extracted KEY FACT line (plain text)
     articles: list[Article]     # for "read more" links
+    category: str = "Wild Card"
     claude_reasoning: str = ""
 
 
@@ -94,7 +95,7 @@ def _summarise_one(
             client,
             prompt=prompt,
             temperature=0.5,
-            max_tokens=max(350, SUMMARY_PARAGRAPHS * 300),
+            max_tokens=max(350, SUMMARY_WORDS * 2),
         )
         narrative_md, key_fact = _parse_key_fact(raw)
         body_html = _markdown_to_html(narrative_md)
@@ -111,6 +112,7 @@ def _summarise_one(
         body_html=body_html,
         key_fact=key_fact,
         articles=cluster.articles,
+        category=cluster.category,
         claude_reasoning=cluster.claude_reasoning,
     )
 
@@ -152,6 +154,7 @@ def summarise_top_stories(
                     body_html=body_html,
                     key_fact=key_fact,
                     articles=cluster.articles,
+                    category=cluster.category,
                 )
 
     return [s for s in stories if s is not None]
