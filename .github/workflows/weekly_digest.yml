@@ -4,8 +4,8 @@ on:
   schedule:
     # Every Friday at 08:00 UTC
     - cron: "0 8 * * 5"
+  # Allow manual trigger for testing
   workflow_dispatch:
-    # Allow manual trigger for testing
 
 permissions:
   contents: write
