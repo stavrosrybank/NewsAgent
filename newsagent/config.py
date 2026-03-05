@@ -1,8 +1,4 @@
-"""Central configuration: RSS feeds, constants, weights, and prompt templates.
-
-User-editable settings live in `newsagent.toml` (editorial focus, digest slots,
-word count, etc.) and `feedback.toml` (story ratings). No Python changes needed.
-"""
+"""Central configuration: RSS feeds, constants, and prompt templates."""
 
 import tomllib
 from pathlib import Path
@@ -12,270 +8,141 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 _CONFIG_PATH = Path(__file__).parent.parent / "newsagent.toml"
 
+
 def _load_user_config() -> dict:
     if _CONFIG_PATH.exists():
         with open(_CONFIG_PATH, "rb") as f:
             return tomllib.load(f)
     return {}
 
+
 _user_config = _load_user_config()
 
-EDITORIAL_FOCUS: str  = _user_config.get("editorial", {}).get("focus", "").strip()
-TOP_N_STORIES: int    = _user_config.get("digest", {}).get("top_n_stories", 10)
-LOOKBACK_DAYS: int    = _user_config.get("digest", {}).get("lookback_days", 7)
-SUMMARY_WORDS: int    = _user_config.get("digest", {}).get("summary_words", 80)
-DIGEST_SLOTS: list    = _user_config.get("digest", {}).get("slots", [])
-
-# Flat category list for the scoring prompt (excludes Wild Card — handled separately)
-_CATEGORY_LIST = "\n".join(
-    f"- {s['category']}" for s in DIGEST_SLOTS if s["category"] != "Wild Card"
-) or "- Global Geopolitical\n- Wild Card"
-
-# ---------------------------------------------------------------------------
-# Load feedback.toml
-# ---------------------------------------------------------------------------
-_FEEDBACK_PATH = Path(__file__).parent.parent / "feedback.toml"
-
-def _load_feedback() -> dict:
-    if _FEEDBACK_PATH.exists():
-        with open(_FEEDBACK_PATH, "rb") as f:
-            return tomllib.load(f)
-    return {}
-
-_feedback = _load_feedback()
-
-def _build_feedback_text() -> str:
-    likes    = _feedback.get("likes", {})
-    dislikes = _feedback.get("dislikes", {})
-    liked_topics    = likes.get("topics", [])
-    liked_themes    = likes.get("themes", [])
-    disliked_topics = dislikes.get("topics", [])
-    disliked_themes = dislikes.get("themes", [])
-    if not any([liked_topics, liked_themes, disliked_topics, disliked_themes]):
-        return "No reader feedback provided yet."
-    parts = []
-    if liked_topics or liked_themes:
-        parts.append("Reader enjoyed (seek similar):")
-        if liked_topics:  parts.append(f"  Topics: {', '.join(liked_topics)}")
-        if liked_themes:  parts.append(f"  Stories: {', '.join(liked_themes)}")
-    if disliked_topics or disliked_themes:
-        parts.append("Reader did NOT enjoy (deprioritise similar):")
-        if disliked_topics: parts.append(f"  Topics: {', '.join(disliked_topics)}")
-        if disliked_themes: parts.append(f"  Stories: {', '.join(disliked_themes)}")
-    return "\n".join(parts)
-
-FEEDBACK_TEXT: str = _build_feedback_text()
+EDITORIAL_FOCUS: str = _user_config.get("editorial", {}).get("focus", "").strip()
+LOOKBACK_DAYS: int   = _user_config.get("digest", {}).get("lookback_days", 7)
+SUMMARY_WORDS: int   = _user_config.get("digest", {}).get("summary_words", 80)
+DIGEST_SLOTS: list   = _user_config.get("digest", {}).get("slots", [])
 
 # ---------------------------------------------------------------------------
 # RSS feeds
 # ---------------------------------------------------------------------------
 RSS_FEEDS = [
     {
-        # Reuters dropped official RSS in 2020; use Google News RSS filtered to reuters.com
         "source": "Reuters",
         "url": "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en",
         "fallback_url": "https://news.google.com/rss/search?q=reuters+world+news&hl=en-US&gl=US&ceid=US:en",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
-        # AP dropped official RSS; use Google News RSS filtered to apnews.com
         "source": "AP",
         "url": "https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en",
         "fallback_url": "https://apnews.com/hub/ap-top-news.rss",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
         "source": "BBC",
         "url": "https://feeds.bbci.co.uk/news/rss.xml",
         "fallback_url": "https://feeds.bbci.co.uk/news/world/rss.xml",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
         "source": "Guardian",
         "url": "https://www.theguardian.com/world/rss",
         "fallback_url": "https://www.theguardian.com/international/rss",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
-        # Deutsche Welle — English-language German/European news
         "source": "DeutscheWelle",
         "url": "https://rss.dw.com/rdf/rss-en-top",
         "fallback_url": "https://rss.dw.com/xml/rss-en-world",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
-        # Berliner Zeitung — Berlin local news (German language; Claude reads it fine)
         "source": "BerlinerZeitung",
         "url": "https://www.berliner-zeitung.de/feed.rss",
         "fallback_url": "https://news.google.com/rss/search?q=Berlin+site:berliner-zeitung.de&hl=de&gl=DE&ceid=DE:de",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
-        # SvD (Svenska Dagbladet) — Swedish news (Swedish language; Claude reads it fine)
         "source": "SvD",
         "url": "https://www.svd.se/feed/articles.rss",
         "fallback_url": "https://www.svd.se/rss.xml",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
     {
-        # Greece news via Reuters on Google News
         "source": "GreeceReuters",
         "url": "https://news.google.com/rss/search?q=Greece+site:reuters.com&hl=en-US&gl=US&ceid=US:en",
         "fallback_url": "https://news.google.com/rss/search?q=Greece+news&hl=en-US&gl=US&ceid=US:en",
-        "prominence_weight": 1.0,
         "timeout_secs": 15,
     },
 ]
 
-NUM_SOURCES: int = len(RSS_FEEDS)
+# ---------------------------------------------------------------------------
+# Claude model & retry settings
+# ---------------------------------------------------------------------------
+CLAUDE_MODEL = "claude-sonnet-4-6"
+CLAUDE_MAX_RETRIES = 3
+CLAUDE_RETRY_DELAYS = [5, 10, 20]
 
 # ---------------------------------------------------------------------------
-# Fetch / filter settings
+# Fetch settings
 # ---------------------------------------------------------------------------
 MAX_ARTICLES_PER_SOURCE = 50
 USER_AGENT = "NewsAgent/1.0 (weekly digest bot)"
 
 # ---------------------------------------------------------------------------
-# Claude model
-# ---------------------------------------------------------------------------
-CLAUDE_MODEL = "claude-sonnet-4-6"
-
-# ---------------------------------------------------------------------------
-# Score weights  (must sum to 1.0)
-# ---------------------------------------------------------------------------
-WEIGHT_SOURCE_COUNT = 0.50
-WEIGHT_CLAUDE_SCORE = 0.35
-WEIGHT_RECENCY      = 0.15
-
-# ---------------------------------------------------------------------------
-# Retry settings for Claude calls
-# ---------------------------------------------------------------------------
-CLAUDE_MAX_RETRIES = 3
-CLAUDE_RETRY_DELAYS = [5, 10, 20]
-
-# ---------------------------------------------------------------------------
 # Prompt templates
 # ---------------------------------------------------------------------------
-_SOURCE_LIST = ", ".join(f["source"] for f in RSS_FEEDS)
 
-CLUSTERING_PROMPT_TEMPLATE = f"""\
-You are a news editor assistant. Below is a numbered list of news article titles \
-collected from {_SOURCE_LIST} in the past 7 days.
+SELECTION_PROMPT_TEMPLATE = """\
+You are a news editor selecting stories for a weekly digest.
 
-Your task: group these articles into thematic clusters where each cluster \
-represents a single distinct news story or ongoing event.
+Here are all articles fetched from RSS feeds this week:
+{articles_text}
 
-Articles:
-{{articles_text}}
+Select the best article(s) for each category below.
 
 Rules:
-- Each article belongs to exactly one cluster.
-- Clusters should be tight — only group articles that clearly cover the same story.
-- Unrelated or unique articles should each form their own single-article cluster.
-- Give each cluster a concise theme label (max 10 words).
-
-Respond ONLY with valid JSON in exactly this format (no markdown, no explanation):
-{{{{
-  "clusters": [
-    {{{{
-      "cluster_id": 1,
-      "theme": "Brief theme description",
-      "article_indices": [0, 3, 7]
-    }}}}
-  ]
-}}}}
-"""
-
-SCORING_PROMPT_TEMPLATE = f"""\
-You are a senior news editor. Below are clusters of news stories from the past week.
-
-Your tasks:
-1. Score each cluster from 1–10 on newsworthiness.
-2. Assign each cluster to exactly one category from the list below.
-
-Valid categories:
-{_CATEGORY_LIST}
-- Wild Card
-
-Category assignment rules — apply these strictly:
-- "Germany/Berlin": any story primarily about Germany or Berlin, even if it has
-  international dimensions (e.g. German budget, Berlin politics, German election).
-- "Sweden": any story primarily about Sweden or Swedish affairs.
-- "Greece": any story primarily about Greece or Greek affairs.
-- "Science/Tech/AI": science, technology, or AI breakthroughs — do NOT use
-  "Global Geopolitical" for these even if geopolitically significant.
-- "Finance/Business/Economy": markets, economy, business, trade — do NOT use
-  "Global Geopolitical" for financial/economic stories unless they are primarily
-  about military or political conflict.
-- "Culture": arts, society, sports, lifestyle.
-- "Global Geopolitical": reserve ONLY for stories where the primary subject is
-  international politics, military conflict, or diplomacy. If a story could fit
-  another category, prefer that category.
-- "Wild Card": only if no other category fits.
-
-IMPORTANT — Source-based category signals. These sources only cover specific regions.
-If a cluster contains articles from any of these sources, you MUST prefer that region's category
-over "Global Geopolitical", even if the story also has international significance:
-- "BerlinerZeitung" → always assign "Germany/Berlin"
-- "DeutscheWelle" → strongly prefer "Germany/Berlin"
-- "SvD" → always assign "Sweden"
-- "GreeceReuters" → always assign "Greece"
+- If "preferred_sources" are listed for a category, you MUST select from those sources first.
+  Only fall back to other sources if no preferred-source article fits the category.
+- Each article index can only be used ONCE across all categories.
+- If no suitable article exists for a category, return null with a brief reason
+  (e.g. "no BerlinerZeitung articles available", "feed blocked").
+- Prefer recent, important, and distinct stories. Avoid picking the same event
+  for multiple categories.
 
 Editorial guidance:
-{{editorial_focus}}
+{editorial_focus}
 
-Reader feedback from previous digests:
-{{feedback_text}}
+Categories:
+{categories_text}
 
-Topics already covered in recent digests (deprioritise unless major new developments):
-{{memory_text}}
-
-General scoring criteria:
-- Geopolitical significance
-- Economic impact
-- Human interest / scale
-- Novelty and unexpectedness
-- Likelihood of long-term consequence
-
-Clusters:
-{{clusters_text}}
-
-Respond ONLY with valid JSON in exactly this format (no markdown, no explanation):
-{{{{
-  "scores": [
-    {{{{
-      "cluster_id": 1,
-      "score": 8.5,
-      "reasoning": "One sentence explanation.",
-      "category": "Global Geopolitical"
-    }}}}
-  ]
-}}}}
+Return ONLY valid JSON, no markdown code fences, no explanation:
+{{
+  "selections": {{
+    "Category Name": [4, 12],
+    "Other Category": [1],
+    "Missing Category": {{"indices": null, "reason": "brief reason"}}
+  }}
+}}
 """
 
 SUMMARIZATION_PROMPT_TEMPLATE = f"""\
-You are a skilled journalist writing a concise weekly digest for a busy reader.
+You are a journalist writing a concise weekly digest story.
 
-Write a summary of the following news story based on coverage from multiple major outlets.
+Category: {{category}}
+Source: {{source}}
+Original title: {{original_title}}
 
-Story theme: {{theme}}
-
-Source articles:
+Article content:
 {{articles_text}}
 
-Write approximately {SUMMARY_WORDS} words of clear, factual prose. \
-Cover the key who/what/why/impact in a single tight paragraph. \
-Do NOT use bullet points or headers.
+Write a summary of approximately {SUMMARY_WORDS} words.
 
-After the paragraph, on a new line write exactly:
-KEY FACT: [one concise, striking sentence that captures the single most important fact]
-
-Format your entire response in Markdown.
+Return ONLY valid JSON (no markdown code fences, no explanation):
+{{{{
+  "title_en": "English title — translate if the original is not in English, otherwise copy it verbatim",
+  "summary": "One short paragraph of approximately {SUMMARY_WORDS} words. Factual, clear prose. No bullet points or headers.",
+  "key_fact": "One concise, striking sentence capturing the single most important fact."
+}}}}
 """

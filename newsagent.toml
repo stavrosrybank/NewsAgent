@@ -4,73 +4,73 @@
 
 # ---------------------------------------------------------------------------
 # Editorial Focus
-# This text is sent directly to Claude when it scores stories for importance.
-# Write in plain English. Be as specific or general as you like.
+# Sent to Claude when selecting the best article per category.
 # ---------------------------------------------------------------------------
 [editorial]
 focus = """
 Reader profile: based in Berlin, with family in Sweden and Greece.
 
-Geographic priorities:
-- Global stories with major international impact always come first.
-- Give strong weight to European news — especially stories directly relevant
-  to Germany, Greece, or Sweden.
-- Local Berlin news are also interesting.
-- UK, French, and broader EU political/economic news is of interest.
-- Scandinavian stories (Sweden, Norway, Denmark) are welcome.
-
-What to deprioritize:
-- US domestic political news (party politics, congressional procedure, culture
-  war debates) unless it has clear, significant consequences for Europe or the
-  wider world (e.g. trade tariffs affecting EU, US military posture changes,
-  major economic policy shifts with global spillover).
-- Celebrity or entertainment news.
-- Too specific news from countries that are not Germany, Sweden, Greece, or Berlin related.
+- Prefer European news with direct relevance to Germany, Sweden, or Greece.
+- Local Berlin news is always welcome.
+- Deprioritise US domestic politics unless it has clear European consequences.
+- Deprioritise celebrity or pure entertainment news.
 """
 
 # ---------------------------------------------------------------------------
 # Digest settings
 # ---------------------------------------------------------------------------
 [digest]
-top_n_stories = 10
 lookback_days = 7
-summary_words = 80   # target word count per story summary (Key Fact is added on top)
+summary_words = 80   # target word count per story summary
 
 # ---------------------------------------------------------------------------
-# Story slots — defines the structure of each digest.
-# The 'count' field sets how many stories of that category to include.
-# Slot categories are assigned by Claude during scoring.
-# 'Wild Card' always fills last — picks whatever scores highest overall.
-# Total count across all slots should equal top_n_stories.
+# Story slots — one article per slot, selected by Claude.
+#
+# Fields:
+#   category          — display name shown in the email (required)
+#   count             — number of stories for this category (default 1)
+#   description       — plain-English guidance for Claude's article selection
+#   preferred_sources — Claude MUST pick from these sources when available
+#
+# To add a category: copy a [[digest.slots]] block and fill in the fields.
+# To remove a category: delete its [[digest.slots]] block.
 # ---------------------------------------------------------------------------
-[[digest.slots]]
-category = "Global Geopolitical"
-count = 2
 
 [[digest.slots]]
-category = "Germany/Berlin"
+category = "Global News"
 count = 2
+description = "Major world events, international politics, military conflict, diplomacy"
+
+[[digest.slots]]
+category = "Germany"
+count = 1
+description = "German politics, economy, society — national German stories"
+preferred_sources = ["DeutscheWelle"]
+
+[[digest.slots]]
+category = "Berlin"
+count = 1
+description = "Berlin city politics, local events, stories specific to Berlin"
+preferred_sources = ["BerlinerZeitung"]
 
 [[digest.slots]]
 category = "Sweden"
 count = 1
+description = "Swedish news and affairs"
+preferred_sources = ["SvD"]
 
 [[digest.slots]]
 category = "Greece"
 count = 1
+description = "Greek news and affairs"
+preferred_sources = ["GreeceReuters"]
 
 [[digest.slots]]
-category = "Science/Tech/AI"
+category = "Science & Tech"
 count = 1
+description = "AI, science breakthroughs, technology, space, medicine"
 
 [[digest.slots]]
-category = "Finance/Business/Economy"
+category = "Culture & Sports"
 count = 1
-
-[[digest.slots]]
-category = "Culture"
-count = 1
-
-[[digest.slots]]
-category = "Wild Card"
-count = 1
+description = "Arts, culture, sports, lifestyle, entertainment"

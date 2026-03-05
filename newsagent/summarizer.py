@@ -1,93 +1,81 @@
 """
-Generate narrative summaries for each top story via parallel Claude calls.
+Generate summaries for each selected story via parallel Claude calls.
+Returns DigestStory objects with English titles, HTML body, and key fact.
 """
 
+import json
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import markdown as md_lib
 import anthropic
 
-from newsagent.clustering import call_claude_with_retry
+from newsagent.selector import call_claude_with_retry, SelectedStory
 from newsagent.config import SUMMARIZATION_PROMPT_TEMPLATE, SUMMARY_WORDS
-from newsagent.fetcher import Article
-from newsagent.scorer import ScoredCluster
 
 logger = logging.getLogger(__name__)
 
 _MAX_SUMMARY_WORKERS = 5
 
 
+# ---------------------------------------------------------------------------
+# Output dataclass
+# ---------------------------------------------------------------------------
+
 @dataclass
 class DigestStory:
     rank: int
-    theme: str
-    sources: list[str]
-    source_count: int
-    final_score: float
-    body_html: str              # narrative paragraphs as HTML
-    key_fact: str               # extracted KEY FACT line (plain text)
-    articles: list[Article]     # for "read more" links
-    category: str = "Wild Card"
-    claude_reasoning: str = ""
+    title_en: str       # English title (translated if needed)
+    category: str
+    source: str         # source name (e.g. "BerlinerZeitung")
+    url: str            # direct article URL
+    body_html: str      # summary as an HTML paragraph
+    key_fact: str       # one striking sentence
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _format_articles_for_summary(articles: list[Article]) -> str:
-    lines = []
-    for a in articles:
-        lines.append(f"Source: {a.source}")
-        lines.append(f"Title: {a.title}")
-        if a.summary:
-            lines.append(f"Summary: {a.summary}")
-        lines.append("")
-    return "\n".join(lines)
+def _strip_fences(text: str) -> str:
+    clean = text.strip()
+    if clean.startswith("```"):
+        clean = re.sub(r"^```[a-z]*\n?", "", clean)
+        clean = re.sub(r"\n?```$", "", clean)
+    return clean.strip()
 
 
-def _parse_key_fact(text: str) -> tuple[str, str]:
-    """
-    Split Claude's response into (narrative, key_fact).
-    Returns (full text, '') if KEY FACT line is not found.
-    """
-    marker = "KEY FACT:"
-    idx = text.upper().find(marker)
-    if idx == -1:
-        return text.strip(), ""
-    narrative = text[:idx].strip()
-    key_fact = text[idx + len(marker):].strip().lstrip("*_").rstrip("*_")
-    return narrative, key_fact
-
-
-def _markdown_to_html(text: str) -> str:
-    return md_lib.markdown(text, extensions=["nl2br"])
-
-
-def _fallback_body(cluster: ScoredCluster) -> tuple[str, str]:
-    """Generate minimal fallback body when Claude summarisation fails."""
-    parts = [f"<p><strong>{cluster.theme}</strong></p>"]
-    for a in cluster.articles[:3]:
-        snippet = a.summary[:300] if a.summary else a.title
-        parts.append(f"<p><em>{a.source}:</em> {snippet}</p>")
-    return "\n".join(parts), ""
+def _fallback(story: SelectedStory) -> DigestStory:
+    """Minimal fallback when Claude summarisation fails."""
+    a = story.article
+    snippet = a.summary[:300] if a.summary else a.title
+    return DigestStory(
+        rank=story.rank,
+        title_en=a.title,
+        category=story.category,
+        source=a.source,
+        url=a.url,
+        body_html=f"<p>{snippet}</p>",
+        key_fact="",
+    )
 
 
 # ---------------------------------------------------------------------------
 # Single-story summariser
 # ---------------------------------------------------------------------------
 
-def _summarise_one(
-    rank: int,
-    cluster: ScoredCluster,
-    client: anthropic.Anthropic,
-) -> DigestStory:
-    articles_text = _format_articles_for_summary(cluster.articles)
+def _summarise_one(story: SelectedStory, client: anthropic.Anthropic) -> DigestStory:
+    a = story.article
+    article_text = f"Title: {a.title}"
+    if a.summary:
+        article_text += f"\nSummary: {a.summary}"
+
     prompt = SUMMARIZATION_PROMPT_TEMPLATE.format(
-        theme=cluster.theme,
-        articles_text=articles_text,
+        category=story.category,
+        source=a.source,
+        original_title=a.title,
+        articles_text=article_text,
     )
 
     try:
@@ -95,25 +83,25 @@ def _summarise_one(
             client,
             prompt=prompt,
             temperature=0.5,
-            max_tokens=max(350, SUMMARY_WORDS * 2),
+            max_tokens=max(400, SUMMARY_WORDS * 3),
         )
-        narrative_md, key_fact = _parse_key_fact(raw)
-        body_html = _markdown_to_html(narrative_md)
+        data = json.loads(_strip_fences(raw))
+        title_en  = data.get("title_en", a.title).strip()
+        summary   = data.get("summary", "").strip()
+        key_fact  = data.get("key_fact", "").strip()
+        body_html = f"<p>{summary}</p>" if summary else f"<p>{a.summary or a.title}</p>"
     except Exception as exc:
-        logger.warning("Summarisation failed for cluster %d '%s': %s", cluster.cluster_id, cluster.theme, exc)
-        body_html, key_fact = _fallback_body(cluster)
+        logger.warning("Summarisation failed for '%s': %s", a.title[:60], exc)
+        return _fallback(story)
 
     return DigestStory(
-        rank=rank,
-        theme=cluster.theme,
-        sources=cluster.sources,
-        source_count=cluster.source_count,
-        final_score=cluster.final_score,
+        rank=story.rank,
+        title_en=title_en,
+        category=story.category,
+        source=a.source,
+        url=a.url,
         body_html=body_html,
         key_fact=key_fact,
-        articles=cluster.articles,
-        category=cluster.category,
-        claude_reasoning=cluster.claude_reasoning,
     )
 
 
@@ -122,39 +110,29 @@ def _summarise_one(
 # ---------------------------------------------------------------------------
 
 def summarise_top_stories(
-    top_clusters: list[ScoredCluster],
+    selected: list[SelectedStory],
     client: anthropic.Anthropic,
 ) -> list[DigestStory]:
-    """
-    Summarise each top cluster in parallel (max 5 concurrent Claude calls).
-    Returns DigestStory list in rank order.
-    """
-    stories: list[DigestStory] = [None] * len(top_clusters)  # type: ignore[list-item]
+    """Summarise all selected stories in parallel. Returns list in rank order."""
+    stories: list[DigestStory | None] = [None] * len(selected)
 
     with ThreadPoolExecutor(max_workers=_MAX_SUMMARY_WORKERS) as executor:
         futures = {
-            executor.submit(_summarise_one, rank + 1, cluster, client): rank
-            for rank, cluster in enumerate(top_clusters)
+            executor.submit(_summarise_one, story, client): i
+            for i, story in enumerate(selected)
         }
         for future in as_completed(futures):
-            rank = futures[future]
+            i = futures[future]
             try:
-                stories[rank] = future.result()
-                logger.info("Summarised story #%d: %s", rank + 1, top_clusters[rank].theme)
-            except Exception as exc:
-                logger.error("Fatal error summarising story #%d: %s", rank + 1, exc)
-                cluster = top_clusters[rank]
-                body_html, key_fact = _fallback_body(cluster)
-                stories[rank] = DigestStory(
-                    rank=rank + 1,
-                    theme=cluster.theme,
-                    sources=cluster.sources,
-                    source_count=cluster.source_count,
-                    final_score=cluster.final_score,
-                    body_html=body_html,
-                    key_fact=key_fact,
-                    articles=cluster.articles,
-                    category=cluster.category,
+                stories[i] = future.result()
+                logger.info(
+                    "Summarised story #%d (%s): %s",
+                    selected[i].rank,
+                    selected[i].category,
+                    selected[i].article.title[:60],
                 )
+            except Exception as exc:
+                logger.error("Fatal error summarising story %d: %s", i, exc)
+                stories[i] = _fallback(selected[i])
 
     return [s for s in stories if s is not None]

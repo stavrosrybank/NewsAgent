@@ -1,7 +1,7 @@
 """
 NewsAgent — Weekly News Digest Orchestrator
-==========================================
-Fetch → Cluster → Score → Summarise → Render → Send
+===========================================
+Fetch → Select → Summarise → Render → Send
 """
 
 import json
@@ -9,16 +9,16 @@ import logging
 import os
 import sys
 import traceback
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
 import anthropic
 
-from newsagent.clustering import cluster_articles, score_clusters_with_claude
 from newsagent.fetcher import fetch_all
 from newsagent.mailer import send_digest
 from newsagent.renderer import render_digest
-from newsagent.scorer import score_clusters
+from newsagent.selector import select_articles
 from newsagent.summarizer import summarise_top_stories
 
 # ---------------------------------------------------------------------------
@@ -36,11 +36,11 @@ logging.basicConfig(
 logger = logging.getLogger("newsagent.main")
 
 _MEMORY_PATH = Path(__file__).parent / "memory" / "history.json"
-_MEMORY_LOOKBACK = 3  # How many past digests to draw previous themes from
+_MEMORY_LOOKBACK = 3
 
 
 # ---------------------------------------------------------------------------
-# Memory helpers
+# Memory helpers (tracks previously covered titles to avoid repetition)
 # ---------------------------------------------------------------------------
 
 def _load_memory() -> dict:
@@ -53,13 +53,12 @@ def _load_memory() -> dict:
     return {"digests": []}
 
 
-def _save_memory(memory: dict, themes: list[str]) -> None:
+def _save_memory(memory: dict, titles: list[str]) -> None:
     entry = {
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        "themes": themes,
+        "titles": titles,
     }
     memory["digests"].append(entry)
-    # Keep only last 10 digests to avoid unbounded growth
     memory["digests"] = memory["digests"][-10:]
     try:
         _MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -68,15 +67,6 @@ def _save_memory(memory: dict, themes: list[str]) -> None:
         logger.info("Memory saved (%d digest entries)", len(memory["digests"]))
     except Exception as exc:
         logger.warning("Could not save memory file: %s", exc)
-
-
-def _previous_themes(memory: dict) -> list[str]:
-    """Return themes from the last MEMORY_LOOKBACK digests, oldest first."""
-    recent = memory.get("digests", [])[-_MEMORY_LOOKBACK:]
-    themes = []
-    for entry in recent:
-        themes.extend(entry.get("themes", []))
-    return themes
 
 
 # ---------------------------------------------------------------------------
@@ -91,11 +81,10 @@ def _require_env(name: str) -> str:
 
 
 def _week_label() -> str:
-    now = datetime.now(timezone.utc)
-    days_since_monday = now.weekday()
-    monday = now.replace(hour=0, minute=0, second=0, microsecond=0)
     from datetime import timedelta
-    monday -= timedelta(days=days_since_monday)
+    now = datetime.now(timezone.utc)
+    monday = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    monday -= timedelta(days=now.weekday())
     return monday.strftime("Week of %B %-d, %Y")
 
 
@@ -108,7 +97,6 @@ def main() -> None:
     logger.info("NewsAgent starting")
     logger.info("=" * 60)
 
-    # Read secrets from environment
     anthropic_api_key = _require_env("ANTHROPIC_API_KEY")
     smtp_host         = _require_env("SMTP_HOST")
     smtp_port         = int(_require_env("SMTP_PORT"))
@@ -118,53 +106,49 @@ def main() -> None:
     email_to          = _require_env("EMAIL_TO")
 
     client = anthropic.Anthropic(api_key=anthropic_api_key)
-
-    # Load memory (previous digest themes)
     memory = _load_memory()
-    prev_themes = _previous_themes(memory)
-    if prev_themes:
-        logger.info("Loaded %d previous themes from memory", len(prev_themes))
 
     # 1. Fetch
-    logger.info("Step 1/6 — Fetching RSS feeds")
+    logger.info("Step 1/5 — Fetching RSS feeds")
     articles, warnings = fetch_all()
     logger.info("Fetched %d articles; %d warning(s)", len(articles), len(warnings))
-    from collections import Counter
     source_counts = Counter(a.source for a in articles)
     for source, count in sorted(source_counts.items()):
         logger.info("  %-20s %d articles", source, count)
     if not articles:
         raise RuntimeError("No articles fetched — cannot produce digest.")
 
-    # 2. Cluster
-    logger.info("Step 2/6 — Clustering articles")
-    raw_clusters = cluster_articles(articles, client)
-    logger.info("Produced %d clusters", len(raw_clusters))
+    # 2. Select one article per category
+    logger.info("Step 2/5 — Selecting articles by category")
+    selected, category_errors = select_articles(articles, client)
+    logger.info(
+        "Selected %d stories; %d category error(s)",
+        len(selected), len(category_errors),
+    )
+    for err in category_errors:
+        logger.warning("Category '%s': %s", err.category, err.reason)
+    if not selected:
+        raise RuntimeError("No articles selected — cannot produce digest.")
 
-    # 3. Score (Claude editorial + weighted formula)
-    logger.info("Step 3/6 — Scoring clusters")
-    raw_clusters = score_clusters_with_claude(raw_clusters, client, previous_themes=prev_themes)
-    top_scored = score_clusters(raw_clusters)
-    logger.info("Selected top %d stories", len(top_scored))
-
-    # 4. Summarise
-    logger.info("Step 4/6 — Summarising top stories")
-    stories = summarise_top_stories(top_scored, client)
+    # 3. Summarise
+    logger.info("Step 3/5 — Summarising selected stories")
+    stories = summarise_top_stories(selected, client)
     logger.info("Summarised %d stories", len(stories))
 
-    # 5. Render
-    logger.info("Step 5/6 — Rendering HTML digest")
+    # 4. Render
+    logger.info("Step 4/5 — Rendering HTML digest")
     week_label = _week_label()
     html = render_digest(
         stories=stories,
+        category_errors=category_errors,
         total_articles=len(articles),
         warnings=warnings,
         week_label=week_label,
     )
 
-    # 6. Send
+    # 5. Send
     subject = f"Weekly News Digest — {week_label}"
-    logger.info("Step 6/6 — Sending email: '%s'", subject)
+    logger.info("Step 5/5 — Sending email: '%s'", subject)
 
     try:
         send_digest(
@@ -187,10 +171,8 @@ def main() -> None:
             logger.error("Could not save fallback HTML: %s", write_exc)
         raise RuntimeError(f"Email delivery failed: {exc}") from exc
 
-    # Save memory after successful send
-    current_themes = [s.theme for s in stories]
-    _save_memory(memory, current_themes)
-
+    # Save memory
+    _save_memory(memory, [s.title_en for s in stories])
     logger.info("NewsAgent completed successfully.")
 
 
@@ -198,5 +180,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        logger.critical("NewsAgent failed with unhandled exception:\n%s", traceback.format_exc())
+        logger.critical("NewsAgent failed:\n%s", traceback.format_exc())
         sys.exit(1)
