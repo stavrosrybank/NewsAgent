@@ -21,7 +21,7 @@ Reader profile: based in Berlin, with family in Sweden and Greece.
 # ---------------------------------------------------------------------------
 [digest]
 lookback_days = 7
-summary_words = 80   # target word count per story summary
+summary_words = 40   # target word count per story summary
 
 # ---------------------------------------------------------------------------
 # Story slots — one article per slot, selected by Claude.
@@ -40,37 +40,49 @@ summary_words = 80   # target word count per story summary
 category = "Global News"
 count = 2
 description = "Major world events, international politics, military conflict, diplomacy"
+preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Germany"
 count = 1
 description = "German politics, economy, society — national German stories"
-preferred_sources = ["DeutscheWelle"]
+preferred_sources = ["DeutscheWelle", "reuters"]
 
 [[digest.slots]]
 category = "Berlin"
 count = 1
 description = "Berlin city politics, local events, stories specific to Berlin"
-preferred_sources = ["BerlinerZeitung"]
+preferred_sources = ["DeutscheWelle","berlin.de","BerlinerZeitung"]
 
 [[digest.slots]]
 category = "Sweden"
 count = 1
 description = "Swedish news and affairs"
-preferred_sources = ["SvD"]
+preferred_sources = ["SvD", "reuters"]
 
 [[digest.slots]]
 category = "Greece"
 count = 1
 description = "Greek news and affairs"
-preferred_sources = ["GreeceReuters"]
+preferred_sources = ["Reuters"]
 
 [[digest.slots]]
 category = "Science & Tech"
 count = 1
 description = "AI, science breakthroughs, technology, space, medicine"
+preferred_sources = ["Reuters"]
 
 [[digest.slots]]
 category = "Culture & Sports"
 count = 1
 description = "Arts, culture, sports, lifestyle, entertainment"
+
+[[digest.slots]]
+category = "Business & Finance"
+count = 1
+description = "Big news in finance, startups, economy"
+
+[[digest.slots]]
+category = "Football"
+count = 1
+description = "Big news in Football (soccer), especially involving my favorite teams Hammarby, AEK athens, FC Union"
