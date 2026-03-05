@@ -64,23 +64,25 @@ preferred_sources = ["SvD", "reuters"]
 category = "Greece"
 count = 1
 description = "Greek news and affairs"
-preferred_sources = ["Reuters"]
+preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Science & Tech"
 count = 1
 description = "AI, science breakthroughs, technology, space, medicine"
-preferred_sources = ["Reuters"]
+preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Culture & Sports"
 count = 1
 description = "Arts, culture, sports, lifestyle, entertainment"
+preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Business & Finance"
 count = 1
 description = "Big news in finance, startups, economy"
+preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Football"
