@@ -3,6 +3,7 @@ Generate summaries for each selected story via parallel Claude calls.
 Returns DigestStory objects with English titles, HTML body, and key fact.
 """
 
+import html as html_lib
 import json
 import logging
 import re
@@ -56,7 +57,7 @@ def _fallback(story: SelectedStory) -> DigestStory:
         category=story.category,
         source=a.source,
         url=a.url,
-        body_html=f"<p>{snippet}</p>",
+        body_html=f"<p>{html_lib.escape(snippet)}</p>",
         key_fact="",
     )
 
@@ -89,7 +90,7 @@ def _summarise_one(story: SelectedStory, client: anthropic.Anthropic) -> DigestS
         title_en  = data.get("title_en", a.title).strip()
         summary   = data.get("summary", "").strip()
         key_fact  = data.get("key_fact", "").strip()
-        body_html = f"<p>{summary}</p>" if summary else f"<p>{a.summary or a.title}</p>"
+        body_html = f"<p>{html_lib.escape(summary)}</p>" if summary else f"<p>{html_lib.escape(a.summary or a.title)}</p>"
     except Exception as exc:
         logger.warning("Summarisation failed for '%s': %s", a.title[:60], exc)
         return _fallback(story)

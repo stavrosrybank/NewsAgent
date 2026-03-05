@@ -197,7 +197,7 @@
     <ol>
       {% for story in stories %}
       <li>
-        <a href="{{ story.url }}" target="_blank" rel="noopener noreferrer">{{ story.title_en }}</a>
+        <a href="{{ story.url | safe }}" target="_blank" rel="noopener noreferrer" style="color:#1a3a5c;text-decoration:underline;">{{ story.title_en }}</a>
         <span style="color:#aaa;font-size:11px;margin-left:6px;">{{ story.source }}</span>
       </li>
       {% endfor %}
@@ -215,7 +215,7 @@
     <span class="category-badge">{{ story.category }}</span>
 
     <h2>
-      <a href="{{ story.url }}" target="_blank" rel="noopener noreferrer">{{ story.title_en }}</a>
+      <a href="{{ story.url | safe }}" target="_blank" rel="noopener noreferrer" style="color:#1a1a2e;text-decoration:none;">{{ story.title_en }}</a>
     </h2>
     <div class="source-line">{{ story.source }}</div>
 
@@ -231,7 +231,7 @@
     {% endif %}
 
     <div class="read-more">
-      <a href="{{ story.url }}" target="_blank" rel="noopener noreferrer">Read more &#8594;</a>
+      <a href="{{ story.url | safe }}" target="_blank" rel="noopener noreferrer" style="color:#1a6eb5;text-decoration:underline;font-weight:600;">Read more &#8594;</a>
     </div>
   </div>
   {% if not loop.last or category_errors %}<div class="divider"></div>{% endif %}
