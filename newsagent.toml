@@ -52,7 +52,7 @@ preferred_sources = ["DeutscheWelle", "reuters"]
 category = "Berlin"
 count = 1
 description = "Berlin city politics, local events, stories specific to Berlin"
-preferred_sources = ["DeutscheWelle","berlin.de","BerlinerZeitung"]
+preferred_sources = ["rbb24","BerlinerZeitung","DeutscheWelle"]
 
 [[digest.slots]]
 category = "Sweden"

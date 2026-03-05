@@ -98,13 +98,23 @@ def _format_articles(articles: list[Article]) -> str:
     return "\n".join(f"[{idx}] ({a.source}) {a.title}" for idx, a in enumerate(articles))
 
 
+def _normalize_source(name: str) -> str:
+    """Match a preferred_source name to the actual source name in RSS_FEEDS (case-insensitive)."""
+    from newsagent.config import RSS_FEEDS
+    name_lower = name.lower()
+    for feed in RSS_FEEDS:
+        if feed["source"].lower() == name_lower:
+            return feed["source"]
+    return name  # return as-is if no match (will be logged as unknown)
+
+
 def _build_categories_text() -> str:
     lines = []
     for slot in DIGEST_SLOTS:
         cat = slot["category"]
         count = slot.get("count", 1)
         desc = slot.get("description", "")
-        preferred = slot.get("preferred_sources", [])
+        preferred = [_normalize_source(s) for s in slot.get("preferred_sources", [])]
         entry = f'- "{cat}" (count: {count})'
         if preferred:
             entry += f', preferred_sources: {", ".join(preferred)}'

@@ -75,6 +75,13 @@ RSS_FEEDS = [
         "fallback_url": "https://news.google.com/rss/search?q=Greece+news&hl=en-US&gl=US&ceid=US:en",
         "timeout_secs": 15,
     },
+    {
+        # rbb24 — Berlin/Brandenburg public broadcaster (German language)
+        "source": "rbb24",
+        "url": "https://www.rbb24.de/aktuell/rss/rss.feed",
+        "fallback_url": "https://www.rbb24.de/nachrichten/rss.feed",
+        "timeout_secs": 15,
+    },
 ]
 
 # ---------------------------------------------------------------------------
