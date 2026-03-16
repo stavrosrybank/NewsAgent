@@ -14,6 +14,7 @@ Reader profile: based in Berlin, with family in Sweden and Greece.
 - Local Berlin news is always welcome.
 - Deprioritise US domestic politics unless it has clear European consequences.
 - Deprioritise celebrity or pure entertainment news.
+- News related to AI, tech is always welcome.
 """
 
 # ---------------------------------------------------------------------------
@@ -21,7 +22,7 @@ Reader profile: based in Berlin, with family in Sweden and Greece.
 # ---------------------------------------------------------------------------
 [digest]
 lookback_days = 7
-summary_words = 40   # target word count per story summary
+summary_words = 80   # target word count per story summary
 
 # ---------------------------------------------------------------------------
 # Story slots — one article per slot, selected by Claude.
@@ -38,53 +39,53 @@ summary_words = 40   # target word count per story summary
 
 [[digest.slots]]
 category = "Global News"
-count = 2
+count = 3
 description = "Major world events, international politics, military conflict, diplomacy"
 preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Germany"
-count = 1
+count = 3
 description = "German politics, economy, society — national German stories"
 preferred_sources = ["DeutscheWelle", "reuters"]
 
 [[digest.slots]]
 category = "Berlin"
-count = 1
+count = 3
 description = "Berlin city politics, local events, stories specific to Berlin"
 preferred_sources = ["rbb24","BerlinerZeitung","DeutscheWelle"]
 
 [[digest.slots]]
 category = "Sweden"
-count = 1
+count = 3
 description = "Swedish news and affairs"
 preferred_sources = ["SvD", "reuters"]
 
 [[digest.slots]]
 category = "Greece"
-count = 1
+count = 3
 description = "Greek news and affairs"
 preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Science & Tech"
-count = 1
+count = 3
 description = "AI, science breakthroughs, technology, space, medicine"
 preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Culture & Sports"
-count = 1
+count = 3
 description = "Arts, culture, sports, lifestyle, entertainment"
 preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Business & Finance"
-count = 1
+count = 3
 description = "Big news in finance, startups, economy"
 preferred_sources = ["reuters"]
 
 [[digest.slots]]
 category = "Football"
-count = 1
+count = 3
 description = "Big news in Football (soccer), especially involving my favorite teams Hammarby, AEK athens, FC Union"
