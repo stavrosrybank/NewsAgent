@@ -67,9 +67,9 @@ def call_claude_with_retry(
                 messages=[{"role": "user", "content": prompt}],
             )
             return response.content[0].text
-        except anthropic.RateLimitError as exc:
+        except (anthropic.RateLimitError, anthropic.OverloadedError) as exc:
             last_exc = exc
-            logger.warning("Rate limit hit (attempt %d/%d)", attempt + 1, CLAUDE_MAX_RETRIES)
+            logger.warning("Rate limit / overloaded (attempt %d/%d)", attempt + 1, CLAUDE_MAX_RETRIES)
         except anthropic.APIStatusError as exc:
             if exc.status_code >= 500:
                 last_exc = exc

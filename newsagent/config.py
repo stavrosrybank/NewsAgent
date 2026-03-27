@@ -88,8 +88,8 @@ RSS_FEEDS = [
 # Claude model & retry settings
 # ---------------------------------------------------------------------------
 CLAUDE_MODEL = "claude-sonnet-4-6"
-CLAUDE_MAX_RETRIES = 3
-CLAUDE_RETRY_DELAYS = [5, 10, 20]
+CLAUDE_MAX_RETRIES = 6
+CLAUDE_RETRY_DELAYS = [15, 30, 60, 120, 180, 300]  # up to ~12 min total for overload events
 
 # ---------------------------------------------------------------------------
 # Fetch settings
